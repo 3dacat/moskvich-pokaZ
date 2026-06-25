@@ -115,9 +115,10 @@
             border: 1px solid rgba(255, 255, 255, 0.08);
             color: white;
             cursor: pointer;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             transition: all 0.3s;
             pointer-events: auto;
+            min-width: 160px;
         }
         #switchBtn:hover {
             background: rgba(255, 107, 53, 0.3);
@@ -128,13 +129,13 @@
             #hud { padding: 8px 16px; min-width: auto; width: 90%; bottom: 16px; }
             #hud .speed { font-size: 1.5rem; }
             #controls-hint { font-size: 0.6rem; padding: 6px 14px; white-space: normal; max-width: 90%; top: 12px; }
-            #switchBtn { top: 70px; right: 10px; padding: 8px 14px; font-size: 0.8rem; }
+            #switchBtn { top: 70px; right: 10px; padding: 8px 12px; font-size: 0.7rem; min-width: 120px; }
         }
     </style>
 </head>
 <body>
 
-    <button id="switchBtn">🚗 Переключить на Hunda Seatie</button>
+    <button id="switchBtn">🚗 Следующая машина</button>
 
     <div id="controls-hint">
         <strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник
@@ -274,6 +275,7 @@
 
         let currentCar = null;
         let carLoaded = false;
+        let currentModelIndex = 0;
 
         const carState = {
             position: new THREE.Vector3(0, 0, 0),
@@ -295,19 +297,35 @@
             space: false,
         };
 
-        // Названия моделей
-        const modelNames = {
-            subaru: '🚙 Soobaro Out Black',
-            honda: '🚗 Hunda Seatie'
-        };
+        // Список моделей
+        const modelsList = [
+            {
+                id: 'subaru',
+                name: '🚙 Soobaro Out Black',
+                file: 'subaru_outback.glb'
+            },
+            {
+                id: 'bmw',
+                name: '🚗 BEEMWA 22',
+                file: 'bmw2002.glb'
+            },
+            {
+                id: 'nissan',
+                name: '🚘 Neasun Loral 2rbo',
+                file: 'nissan_laurel.glb'
+            }
+        ];
 
-        function loadModel(modelName, path) {
+        // Хранилище загруженных моделей
+        const loadedModels = {};
+
+        function loadModel(modelId, filePath) {
             return new Promise((resolve, reject) => {
-                const displayName = modelName === 'subaru' ? 'Soobaro Out Black' : 'Hunda Seatie';
-                loadStatus.textContent = `Загрузка ${displayName}...`;
+                const modelInfo = modelsList.find(m => m.id === modelId);
+                loadStatus.textContent = `Загрузка ${modelInfo.name}...`;
 
                 loader.load(
-                    path,
+                    filePath,
                     (gltf) => {
                         const model = gltf.scene;
 
@@ -354,32 +372,40 @@
             });
         }
 
-        let subaruModel = null;
-        let hondaModel = null;
-        let currentModelName = 'subaru';
-
         async function init() {
             try {
-                subaruModel = await loadModel('subaru', 'subaru_outback.glb');
-                currentCar = subaruModel;
-                carLoaded = true;
-                loadingDiv.style.display = 'none';
-                document.getElementById('modelNameDisplay').textContent = modelNames.subaru;
-                console.log('✅ Soobaro Out Black загружен в центре (0, 0, 0)');
-                
-                try {
-                    hondaModel = await loadModel('honda', 'honda_city_2017.glb');
-                    hondaModel.visible = false;
-                    console.log('✅ Hunda Seatie загружена в фоне');
-                } catch (e) {
-                    console.warn('Hunda Seatie не загружена:', e);
+                // Загружаем все модели
+                for (const model of modelsList) {
+                    try {
+                        const modelObj = await loadModel(model.id, model.file);
+                        loadedModels[model.id] = modelObj;
+                        // Прячем все кроме первой
+                        if (model.id !== modelsList[0].id) {
+                            modelObj.visible = false;
+                        }
+                        console.log(`✅ ${model.name} загружен`);
+                    } catch (e) {
+                        console.warn(`❌ Ошибка загрузки ${model.name}:`, e);
+                    }
                 }
+
+                // Показываем первую модель
+                const firstModel = modelsList[0];
+                if (loadedModels[firstModel.id]) {
+                    currentCar = loadedModels[firstModel.id];
+                    currentModelIndex = 0;
+                    carLoaded = true;
+                    document.getElementById('modelNameDisplay').textContent = firstModel.name;
+                }
+
+                loadingDiv.style.display = 'none';
+                console.log('✅ Все модели загружены!');
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
                 loadingDiv.innerHTML = `
                     <p style="color: #ff6b35; font-weight: 500;">
-                        ❌ Не удалось загрузить модель.<br>
-                        Проверьте путь к файлу <code>subaru_outback.glb</code>.
+                        ❌ Не удалось загрузить модели.<br>
+                        Проверьте пути к файлам.
                     </p>
                 `;
             }
@@ -391,37 +417,35 @@
         // 5. ПЕРЕКЛЮЧЕНИЕ МОДЕЛЕЙ
         // --------------------------------------------------------------
         const switchBtn = document.getElementById('switchBtn');
-        let isSubaru = true;
 
         switchBtn.addEventListener('click', () => {
-            if (!subaruModel || !hondaModel) return;
+            if (!carLoaded) return;
 
-            if (isSubaru) {
-                subaruModel.visible = false;
-                hondaModel.visible = true;
-                currentCar = hondaModel;
-                currentModelName = 'honda';
-                switchBtn.textContent = '🚙 Переключить на Soobaro Out Black';
-                document.querySelector('#controls-hint').innerHTML = 
-                    '<strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; 🚗 Hunda Seatie';
-                document.getElementById('modelNameDisplay').textContent = modelNames.honda;
-            } else {
-                subaruModel.visible = true;
-                hondaModel.visible = false;
-                currentCar = subaruModel;
-                currentModelName = 'subaru';
-                switchBtn.textContent = '🚗 Переключить на Hunda Seatie';
-                document.querySelector('#controls-hint').innerHTML = 
-                    '<strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; 🚙 Soobaro Out Black';
-                document.getElementById('modelNameDisplay').textContent = modelNames.subaru;
+            // Скрываем текущую
+            const currentModelId = modelsList[currentModelIndex].id;
+            if (loadedModels[currentModelId]) {
+                loadedModels[currentModelId].visible = false;
             }
+
+            // Переключаем на следующую
+            currentModelIndex = (currentModelIndex + 1) % modelsList.length;
+            const nextModel = modelsList[currentModelIndex];
             
-            isSubaru = !isSubaru;
-            
-            carState.position.set(0, 0, 0);
-            carState.velocity.set(0, 0, 0);
-            carState.rotation = 0;
-            if (currentCar) {
+            if (loadedModels[nextModel.id]) {
+                currentCar = loadedModels[nextModel.id];
+                currentCar.visible = true;
+                document.getElementById('modelNameDisplay').textContent = nextModel.name;
+                
+                // Обновляем подсказку
+                const hint = document.querySelector('#controls-hint');
+                const modelEmoji = nextModel.id === 'subaru' ? '🚙' : nextModel.id === 'bmw' ? '🚗' : '🚘';
+                hint.innerHTML = 
+                    `<strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; ${modelEmoji} ${nextModel.name}`;
+                
+                // Сбрасываем позицию
+                carState.position.set(0, 0, 0);
+                carState.velocity.set(0, 0, 0);
+                carState.rotation = 0;
                 currentCar.position.set(0, 0, 0);
                 currentCar.rotation.y = 0;
             }
@@ -523,9 +547,8 @@
         }
 
         // --------------------------------------------------------------
-        // 7. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА (постоянный ракурс)
+        // 7. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА
         // --------------------------------------------------------------
-        // Камера всегда сзади-сверху относительно машины
         const CAMERA_DISTANCE = 5;
         const CAMERA_HEIGHT = 3;
         const CAMERA_SMOOTH = 0.1;
@@ -537,7 +560,6 @@
 
             const carPos = currentCar.position.clone();
             
-            // Позиция камеры относительно машины (сзади-сверху)
             const angle = carState.rotation;
             const offset = new THREE.Vector3(
                 -Math.sin(angle) * CAMERA_DISTANCE,
@@ -546,11 +568,8 @@
             );
             
             const desiredPos = carPos.clone().add(offset);
-            
-            // Плавное следование
             camera.position.lerp(desiredPos, CAMERA_SMOOTH);
 
-            // Смотрим на машину
             const lookTarget = carPos.clone();
             lookTarget.y += 0.5;
             cameraTarget.lerp(lookTarget, CAMERA_SMOOTH);
@@ -579,10 +598,10 @@
         }
         animate();
 
-        console.log('🚙 Soobaro Out Black — симулятор запущен!');
+        console.log('🚗 Симулятор запущен!');
         console.log('📍 Спавн в центре (0, 0, 0)');
         console.log('📖 Управление: W-вперёд, S-назад, A/D-руль, Пробел-ручник');
-        console.log('🔄 Кнопка справа переключает на Hunda Seatie');
+        console.log('🔄 Кнопка справа переключает машины');
     </script>
 </body>
 </html>

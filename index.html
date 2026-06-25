@@ -139,8 +139,8 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x0a0a1a);
 
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
-        camera.position.set(0, 5, 8);
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(-47.14, 5, -33.72); // Камера над машиной
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -164,11 +164,11 @@
         dirLight.shadow.mapSize.height = 2048;
         dirLight.shadow.bias = -0.001;
         dirLight.shadow.camera.near = 0.1;
-        dirLight.shadow.camera.far = 30;
-        dirLight.shadow.camera.left = -10;
-        dirLight.shadow.camera.right = 10;
-        dirLight.shadow.camera.top = 10;
-        dirLight.shadow.camera.bottom = -10;
+        dirLight.shadow.camera.far = 100;
+        dirLight.shadow.camera.left = -20;
+        dirLight.shadow.camera.right = 20;
+        dirLight.shadow.camera.top = 20;
+        dirLight.shadow.camera.bottom = -20;
         scene.add(dirLight);
 
         const backLight = new THREE.DirectionalLight(0x4488ff, 0.6);
@@ -180,9 +180,9 @@
         scene.add(fillLight);
 
         // --------------------------------------------------------------
-        // 3. ПОЛ (как в предыдущей версии)
+        // 3. ПОЛ (большая карта для координат)
         // --------------------------------------------------------------
-        const groundGeo = new THREE.PlaneGeometry(20, 20);
+        const groundGeo = new THREE.PlaneGeometry(100, 100);
         const groundMat = new THREE.ShadowMaterial({
             opacity: 0.3,
             color: 0x000000,
@@ -193,10 +193,12 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        const gridHelper = new THREE.GridHelper(12, 20, 0x6666aa, 0x333355);
+        // Большая сетка
+        const gridHelper = new THREE.GridHelper(60, 30, 0x6666aa, 0x333355);
         gridHelper.position.y = -0.49;
         scene.add(gridHelper);
 
+        // Маркер в центре
         const markerGeo = new THREE.RingGeometry(0.4, 0.6, 32);
         const markerMat = new THREE.MeshBasicMaterial({
             color: 0xff6b35,
@@ -209,6 +211,11 @@
         marker.position.y = -0.48;
         scene.add(marker);
 
+        // Добавим оси для ориентации
+        const axesHelper = new THREE.AxesHelper(5);
+        axesHelper.position.y = -0.45;
+        scene.add(axesHelper);
+
         // --------------------------------------------------------------
         // 4. ЗАГРУЗКА МОДЕЛИ МОСКВИЧА
         // --------------------------------------------------------------
@@ -218,7 +225,7 @@
         let car = null;
         let carLoaded = false;
 
-        // Координаты спавна (как вы сказали)
+        // Координаты спавна
         const SPAWN_POS = new THREE.Vector3(-47.14, 0.32, -40.72);
 
         loader.load(
@@ -226,7 +233,7 @@
             (gltf) => {
                 car = gltf.scene;
 
-                // Масштабирование
+                // Масштабируем
                 const box = new THREE.Box3().setFromObject(car);
                 const size = box.getSize(new THREE.Vector3());
                 const maxDim = Math.max(size.x, size.y, size.z);
@@ -236,7 +243,7 @@
                     car.scale.set(s, s, s);
                 }
 
-                // Центрируем и ставим на спавн
+                // Центрируем модель
                 const center = new THREE.Vector3();
                 box.getCenter(center);
                 car.position.sub(center);
@@ -277,21 +284,20 @@
         );
 
         // --------------------------------------------------------------
-        // 5. ФИЗИКА АВТОМОБИЛЯ
+        // 5. ФИЗИКА АВТОМОБИЛЯ (исправленная)
         // --------------------------------------------------------------
         const carState = {
             position: new THREE.Vector3(SPAWN_POS.x, SPAWN_POS.y, SPAWN_POS.z),
             velocity: new THREE.Vector3(0, 0, 0),
             rotation: 0,
-            speed: 0,
         };
 
-        const ENGINE_FORCE = 0.15;
-        const BRAKE_FORCE = 0.08;
-        const MAX_SPEED = 0.8;
-        const TURN_SPEED = 0.035;
-        const FRICTION = 0.97;
-        const DRIFT_FRICTION = 0.92;
+        // Параметры управления
+        const ENGINE_FORCE = 0.08;
+        const BRAKE_FORCE = 0.05;
+        const MAX_SPEED = 0.5;
+        const TURN_SPEED = 0.03;
+        const FRICTION = 0.98;
 
         const keys = {
             w: false,
@@ -301,11 +307,13 @@
             space: false,
         };
 
+        // Обработка клавиш
         document.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
-            if (key in keys) {
+            if (key === 'w' || key === 's' || key === 'a' || key === 'd') {
                 keys[key] = true;
                 e.preventDefault();
+                console.log('Клавиша нажата:', key); // Отладка
             }
             if (e.key === ' ') {
                 keys.space = true;
@@ -315,7 +323,7 @@
 
         document.addEventListener('keyup', (e) => {
             const key = e.key.toLowerCase();
-            if (key in keys) {
+            if (key === 'w' || key === 's' || key === 'a' || key === 'd') {
                 keys[key] = false;
                 e.preventDefault();
             }
@@ -330,47 +338,55 @@
 
             const { position, velocity, rotation } = carState;
 
+            // Ускорение
             let acceleration = 0;
             let turn = 0;
 
+            // Газ (W)
             if (keys.w) {
                 acceleration = ENGINE_FORCE;
+                console.log('Газ!'); // Отладка
             }
+            
+            // Тормоз/задний ход (S)
             if (keys.s) {
-                if (Math.abs(velocity.length()) < 0.05) {
-                    acceleration = -ENGINE_FORCE * 0.6;
-                } else {
-                    acceleration = -BRAKE_FORCE;
-                }
+                acceleration = -ENGINE_FORCE * 0.5;
             }
 
+            // Повороты (A/D)
             if (keys.a) turn = TURN_SPEED;
             if (keys.d) turn = -TURN_SPEED;
 
-            const isDrifting = keys.space;
-            const friction = isDrifting ? DRIFT_FRICTION : FRICTION;
-
+            // Поворачиваем только если есть скорость
             if (Math.abs(velocity.length()) > 0.01) {
-                carState.rotation += turn * (velocity.length() / 0.5);
+                carState.rotation += turn;
             }
 
-            const forward = new THREE.Vector3(-Math.sin(carState.rotation), 0, -Math.cos(carState.rotation));
-            velocity.add(forward.multiplyScalar(acceleration));
+            // Движение вперёд/назад
+            const forward = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
+            
+            // Добавляем ускорение
+            velocity.add(forward.clone().multiplyScalar(acceleration));
 
-            if (velocity.length() > MAX_SPEED) {
-                velocity.normalize().multiplyScalar(MAX_SPEED);
+            // Ограничиваем скорость
+            const currentSpeed = velocity.length();
+            if (currentSpeed > MAX_SPEED) {
+                velocity.multiplyScalar(MAX_SPEED / currentSpeed);
             }
 
-            velocity.multiplyScalar(friction);
+            // Трение
+            velocity.multiplyScalar(FRICTION);
 
+            // Останавливаем если почти ноль
             if (velocity.length() < 0.001) {
                 velocity.set(0, 0, 0);
             }
 
+            // Обновляем позицию
             position.add(velocity);
 
-            // Ограничиваем поле (как в предыдущей версии)
-            const BOUNDARY = 8;
+            // Ограничиваем поле (большая карта)
+            const BOUNDARY = 45;
             if (Math.abs(position.x) > BOUNDARY) {
                 position.x = Math.sign(position.x) * BOUNDARY;
                 velocity.x = 0;
@@ -380,18 +396,23 @@
                 velocity.z = 0;
             }
 
+            // Применяем трансформации к модели
             car.position.copy(position);
-            car.rotation.y = carState.rotation;
+            car.rotation.y = rotation;
 
-            if (Math.abs(turn) > 0.01 && velocity.length() > 0.1) {
-                const tilt = -turn * velocity.length() * 0.3;
+            // Наклон при повороте
+            if (Math.abs(turn) > 0.001 && velocity.length() > 0.05) {
+                const tilt = -turn * velocity.length() * 0.5;
                 car.rotation.z = tilt;
             } else {
                 car.rotation.z *= 0.9;
             }
 
+            // Лёгкая подвеска
+            car.position.y = SPAWN_POS.y + Math.sin(Date.now() / 500) * 0.002;
+
             // Обновляем HUD
-            const speedKmh = Math.round(velocity.length() * 120);
+            const speedKmh = Math.round(velocity.length() * 150);
             document.getElementById('speedDisplay').textContent = speedKmh;
 
             document.getElementById('coordDisplay').textContent =
@@ -401,26 +422,28 @@
         // --------------------------------------------------------------
         // 6. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА
         // --------------------------------------------------------------
-        let cameraTarget = new THREE.Vector3(0, 1, 0);
+        let cameraOffset = new THREE.Vector3(0, 3, 5);
+        let cameraTarget = new THREE.Vector3(0, 0.5, 0);
 
         function updateCamera() {
             if (!car || !carLoaded) return;
 
             const carPos = car.position.clone();
             
-            // Смещаем камеру назад и вверх относительно направления машины
+            // Камера сзади-сверху
             const offset = new THREE.Vector3(
-                -Math.sin(carState.rotation) * 7,
+                -Math.sin(carState.rotation) * 6,
                 4,
-                -Math.cos(carState.rotation) * 7
+                -Math.cos(carState.rotation) * 6
             );
             
             const desiredPos = carPos.clone().add(offset);
-            camera.position.lerp(desiredPos, 0.08);
+            camera.position.lerp(desiredPos, 0.1);
 
+            // Смотрим на машину
             const lookTarget = carPos.clone();
             lookTarget.y += 0.5;
-            cameraTarget.lerp(lookTarget, 0.08);
+            cameraTarget.lerp(lookTarget, 0.1);
             camera.lookAt(cameraTarget);
         }
 
@@ -449,6 +472,7 @@
         console.log('🚗 Москвич 2141 — симулятор запущен!');
         console.log('📍 Точка спавна:', SPAWN_POS);
         console.log('📖 Управление: W-газ, S-тормоз, A/D-руль, Пробел-ручник');
+        console.log('💡 Проверьте консоль при нажатии клавиш для отладки');
     </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Subaru Outback — 3D-симулятор</title>
+    <title>Soobaro Out Black — 3D-симулятор</title>
     <style>
         * {
             margin: 0;
@@ -48,6 +48,12 @@
             color: #88ddff;
             font-family: 'Courier New', monospace;
             margin-top: 4px;
+        }
+        #hud .model-name {
+            font-size: 0.9rem;
+            color: #ff6b35;
+            font-weight: 500;
+            margin-top: 2px;
         }
 
         #controls-hint {
@@ -118,52 +124,31 @@
             border-color: #ff6b35;
         }
 
-        #camera-hint {
-            position: absolute;
-            bottom: 90px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(6px);
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            color: #888;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            pointer-events: none;
-            user-select: none;
-        }
-
         @media (max-width: 768px) {
             #hud { padding: 8px 16px; min-width: auto; width: 90%; bottom: 16px; }
             #hud .speed { font-size: 1.5rem; }
             #controls-hint { font-size: 0.6rem; padding: 6px 14px; white-space: normal; max-width: 90%; top: 12px; }
             #switchBtn { top: 70px; right: 10px; padding: 8px 14px; font-size: 0.8rem; }
-            #camera-hint { bottom: 75px; font-size: 0.6rem; padding: 4px 12px; }
         }
     </style>
 </head>
 <body>
 
-    <button id="switchBtn">🚗 Переключить на Москвич</button>
+    <button id="switchBtn">🚗 Переключить на Hunda Seatie</button>
 
     <div id="controls-hint">
         <strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник
     </div>
 
-    <div id="camera-hint">
-        🖱 Перетащите для вращения камеры · Колёсико для зума
-    </div>
-
     <div id="hud">
         <div class="speed"><span id="speedDisplay">0</span> <small>км/ч</small></div>
         <div class="coords" id="coordDisplay">📍 0.00 · 0.00 · 0.00</div>
+        <div class="model-name" id="modelNameDisplay">🚙 Soobaro Out Black</div>
     </div>
 
     <div id="loading">
         <div class="spinner"></div>
-        <p id="loadStatus">Загрузка Subaru Outback...</p>
+        <p id="loadStatus">Загрузка Soobaro Out Black...</p>
     </div>
 
     <script type="importmap">
@@ -177,17 +162,16 @@
 
     <script type="module">
         import * as THREE from 'three';
-        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         // --------------------------------------------------------------
         // 1. СЦЕНА, КАМЕРА, РЕНДЕРЕР
         // --------------------------------------------------------------
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Голубое небо
+        scene.background = new THREE.Color(0x87CEEB);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(4, 3, 6);
+        camera.position.set(0, 3, 5);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -199,21 +183,8 @@
         document.body.appendChild(renderer.domElement);
 
         // --------------------------------------------------------------
-        // 2. ОРБИТ КОНТРОЛ (управление камерой мышью)
+        // 2. ДНЕВНОЕ ОСВЕЩЕНИЕ
         // --------------------------------------------------------------
-        const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
-        controls.minDistance = 2;
-        controls.maxDistance = 20;
-        controls.maxPolarAngle = Math.PI / 2.1;
-        controls.target.set(0, 0.5, 0);
-        controls.update();
-
-        // --------------------------------------------------------------
-        // 3. ДНЕВНОЕ ОСВЕЩЕНИЕ
-        // --------------------------------------------------------------
-        // Яркий солнечный свет
         const sunLight = new THREE.DirectionalLight(0xffeedd, 2.5);
         sunLight.position.set(10, 15, 8);
         sunLight.castShadow = true;
@@ -227,21 +198,13 @@
         sunLight.shadow.camera.bottom = -20;
         scene.add(sunLight);
 
-        // Заполняющий свет (голубоватый от неба)
         const fillLight = new THREE.DirectionalLight(0x88ccff, 0.8);
         fillLight.position.set(-5, 3, -8);
         scene.add(fillLight);
 
-        // Окружающий свет (яркий)
         const ambientLight = new THREE.AmbientLight(0x88bbdd, 0.8);
         scene.add(ambientLight);
 
-        // Дополнительный свет снизу (чтобы подсветить днище)
-        const bottomLight = new THREE.DirectionalLight(0x88ccff, 0.3);
-        bottomLight.position.set(0, -5, 0);
-        scene.add(bottomLight);
-
-        // Солнце (визуальный эффект)
         const sunSphere = new THREE.Mesh(
             new THREE.SphereGeometry(0.5, 16, 16),
             new THREE.MeshBasicMaterial({ color: 0xffff88 })
@@ -251,19 +214,16 @@
         scene.add(sunSphere);
 
         // --------------------------------------------------------------
-        // 4. ПОЛ (светлая трава)
+        // 3. ПОЛ
         // --------------------------------------------------------------
-        // Текстура травы
         const canvas = document.createElement('canvas');
         canvas.width = 512;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
         
-        // Светло-зелёный фон
         ctx.fillStyle = '#4a8c3f';
         ctx.fillRect(0, 0, 512, 512);
         
-        // Трава
         for (let i = 0; i < 30000; i++) {
             const x = Math.random() * 512;
             const y = Math.random() * 512;
@@ -289,12 +249,10 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        // Сетка (светлая)
         const gridHelper = new THREE.GridHelper(60, 30, 0x88dd88, 0x44aa44);
         gridHelper.position.y = -0.48;
         scene.add(gridHelper);
 
-        // Маркер в центре
         const markerGeo = new THREE.RingGeometry(0.4, 0.6, 32);
         const markerMat = new THREE.MeshBasicMaterial({
             color: 0xff6b35,
@@ -308,7 +266,7 @@
         scene.add(marker);
 
         // --------------------------------------------------------------
-        // 5. ЗАГРУЗКА МОДЕЛЕЙ
+        // 4. ЗАГРУЗКА МОДЕЛЕЙ
         // --------------------------------------------------------------
         const loader = new GLTFLoader();
         const loadingDiv = document.getElementById('loading');
@@ -337,9 +295,16 @@
             space: false,
         };
 
+        // Названия моделей
+        const modelNames = {
+            subaru: '🚙 Soobaro Out Black',
+            honda: '🚗 Hunda Seatie'
+        };
+
         function loadModel(modelName, path) {
             return new Promise((resolve, reject) => {
-                loadStatus.textContent = `Загрузка ${modelName === 'subaru' ? 'Subaru Outback' : 'Москвич 2141'}...`;
+                const displayName = modelName === 'subaru' ? 'Soobaro Out Black' : 'Hunda Seatie';
+                loadStatus.textContent = `Загрузка ${displayName}...`;
 
                 loader.load(
                     path,
@@ -367,7 +332,6 @@
                             if (child.isMesh) {
                                 child.castShadow = true;
                                 child.receiveShadow = true;
-                                // Делаем кузов блестящим
                                 if (child.material) {
                                     child.material.roughness = 0.3;
                                     child.material.metalness = 0.5;
@@ -391,7 +355,8 @@
         }
 
         let subaruModel = null;
-        let moskvichModel = null;
+        let hondaModel = null;
+        let currentModelName = 'subaru';
 
         async function init() {
             try {
@@ -399,14 +364,15 @@
                 currentCar = subaruModel;
                 carLoaded = true;
                 loadingDiv.style.display = 'none';
-                console.log('✅ Subaru Outback загружен в центре (0, 0, 0)');
+                document.getElementById('modelNameDisplay').textContent = modelNames.subaru;
+                console.log('✅ Soobaro Out Black загружен в центре (0, 0, 0)');
                 
                 try {
-                    moskvichModel = await loadModel('moskvich', 'moskvich.glb');
-                    moskvichModel.visible = false;
-                    console.log('✅ Москвич загружен в фоне');
+                    hondaModel = await loadModel('honda', 'honda_city_2017.glb');
+                    hondaModel.visible = false;
+                    console.log('✅ Hunda Seatie загружена в фоне');
                 } catch (e) {
-                    console.warn('Москвич не загружен:', e);
+                    console.warn('Hunda Seatie не загружена:', e);
                 }
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
@@ -422,28 +388,32 @@
         init();
 
         // --------------------------------------------------------------
-        // 6. ПЕРЕКЛЮЧЕНИЕ МОДЕЛЕЙ
+        // 5. ПЕРЕКЛЮЧЕНИЕ МОДЕЛЕЙ
         // --------------------------------------------------------------
         const switchBtn = document.getElementById('switchBtn');
         let isSubaru = true;
 
         switchBtn.addEventListener('click', () => {
-            if (!subaruModel || !moskvichModel) return;
+            if (!subaruModel || !hondaModel) return;
 
             if (isSubaru) {
                 subaruModel.visible = false;
-                moskvichModel.visible = true;
-                currentCar = moskvichModel;
-                switchBtn.textContent = '🚗 Переключить на Subaru';
+                hondaModel.visible = true;
+                currentCar = hondaModel;
+                currentModelName = 'honda';
+                switchBtn.textContent = '🚙 Переключить на Soobaro Out Black';
                 document.querySelector('#controls-hint').innerHTML = 
-                    '<strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; 🚗 Москвич';
+                    '<strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; 🚗 Hunda Seatie';
+                document.getElementById('modelNameDisplay').textContent = modelNames.honda;
             } else {
                 subaruModel.visible = true;
-                moskvichModel.visible = false;
+                hondaModel.visible = false;
                 currentCar = subaruModel;
-                switchBtn.textContent = '🚗 Переключить на Москвич';
+                currentModelName = 'subaru';
+                switchBtn.textContent = '🚗 Переключить на Hunda Seatie';
                 document.querySelector('#controls-hint').innerHTML = 
-                    '<strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; 🚙 Subaru';
+                    '<strong>W</strong> — газ &nbsp;·&nbsp; <strong>S</strong> — назад &nbsp;·&nbsp; <strong>A/D</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; 🚙 Soobaro Out Black';
+                document.getElementById('modelNameDisplay').textContent = modelNames.subaru;
             }
             
             isSubaru = !isSubaru;
@@ -455,11 +425,10 @@
                 currentCar.position.set(0, 0, 0);
                 currentCar.rotation.y = 0;
             }
-            controls.target.set(0, 0.5, 0);
         });
 
         // --------------------------------------------------------------
-        // 7. УПРАВЛЕНИЕ
+        // 6. УПРАВЛЕНИЕ
         // --------------------------------------------------------------
         document.addEventListener('keydown', (e) => {
             const key = e.key.toLowerCase();
@@ -546,14 +515,46 @@
 
             currentCar.position.y = 0 + Math.sin(Date.now() / 500) * 0.002;
 
-            // Обновляем OrbitControls target (следим за машиной)
-            controls.target.lerp(position.clone().add(new THREE.Vector3(0, 0.5, 0)), 0.05);
-
             const speedKmh = Math.round(velocity.length() * 150);
             document.getElementById('speedDisplay').textContent = speedKmh;
 
             document.getElementById('coordDisplay').textContent =
                 `📍 ${position.x.toFixed(2)} · ${position.y.toFixed(2)} · ${position.z.toFixed(2)}`;
+        }
+
+        // --------------------------------------------------------------
+        // 7. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА (постоянный ракурс)
+        // --------------------------------------------------------------
+        // Камера всегда сзади-сверху относительно машины
+        const CAMERA_DISTANCE = 5;
+        const CAMERA_HEIGHT = 3;
+        const CAMERA_SMOOTH = 0.1;
+
+        let cameraTarget = new THREE.Vector3(0, 0.5, 0);
+
+        function updateCamera() {
+            if (!currentCar || !carLoaded) return;
+
+            const carPos = currentCar.position.clone();
+            
+            // Позиция камеры относительно машины (сзади-сверху)
+            const angle = carState.rotation;
+            const offset = new THREE.Vector3(
+                -Math.sin(angle) * CAMERA_DISTANCE,
+                CAMERA_HEIGHT,
+                -Math.cos(angle) * CAMERA_DISTANCE
+            );
+            
+            const desiredPos = carPos.clone().add(offset);
+            
+            // Плавное следование
+            camera.position.lerp(desiredPos, CAMERA_SMOOTH);
+
+            // Смотрим на машину
+            const lookTarget = carPos.clone();
+            lookTarget.y += 0.5;
+            cameraTarget.lerp(lookTarget, CAMERA_SMOOTH);
+            camera.lookAt(cameraTarget);
         }
 
         // --------------------------------------------------------------
@@ -572,16 +573,16 @@
             requestAnimationFrame(animate);
 
             updateCar();
-            controls.update();
+            updateCamera();
 
             renderer.render(scene, camera);
         }
         animate();
 
-        console.log('🚙 Subaru Outback — симулятор запущен!');
+        console.log('🚙 Soobaro Out Black — симулятор запущен!');
         console.log('📍 Спавн в центре (0, 0, 0)');
         console.log('📖 Управление: W-вперёд, S-назад, A/D-руль, Пробел-ручник');
-        console.log('🖱 Управление камерой: перетаскивание мышью, колёсико для зума');
+        console.log('🔄 Кнопка справа переключает на Hunda Seatie');
     </script>
 </body>
 </html>

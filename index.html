@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Гоночный симулятор — A-Frame</title>
+    <title>Показ машин — Москвич 2141 и Subaru Outback</title>
     <style>
         * {
             margin: 0;
@@ -17,12 +17,12 @@
             color: #fff;
         }
 
-        #ui {
+        #info {
             position: absolute;
             top: 20px;
             left: 20px;
             z-index: 10;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.75);
             backdrop-filter: blur(8px);
             padding: 16px 24px;
             border-radius: 14px;
@@ -30,71 +30,81 @@
             pointer-events: none;
             user-select: none;
         }
-        #ui h1 {
+        #info h1 {
             font-size: 1.4rem;
             font-weight: 500;
         }
-        #ui h1 span {
-            color: #ff6b35;
-        }
-        #ui .sub {
+        #info h1 small {
+            display: block;
             font-size: 0.85rem;
-            opacity: 0.6;
+            font-weight: 300;
+            color: #aaa;
             margin-top: 4px;
         }
 
-        #carSelect {
+        #legend {
             position: absolute;
             bottom: 30px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 10;
             display: flex;
-            gap: 14px;
+            gap: 30px;
             background: rgba(0, 0, 0, 0.7);
             backdrop-filter: blur(8px);
-            padding: 10px 20px;
-            border-radius: 40px;
+            padding: 12px 28px;
+            border-radius: 16px;
             border: 1px solid rgba(255, 255, 255, 0.06);
         }
-        #carSelect button {
-            background: rgba(255, 255, 255, 0.06);
-            border: none;
-            color: #fff;
-            padding: 8px 22px;
-            border-radius: 30px;
-            font-size: 0.95rem;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s;
-            border: 1px solid transparent;
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        #carSelect button:hover {
-            background: rgba(255, 255, 255, 0.12);
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
         }
-        #carSelect button.active {
+        .legend-color.moskotch {
             background: #ff6b35;
-            border-color: #ff6b35;
-            color: #fff;
-            box-shadow: 0 0 20px rgba(255, 107, 53, 0.2);
+        }
+        .legend-color.subaru {
+            background: #35b5ff;
+        }
+        .legend-text {
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .legend-text small {
+            font-weight: 300;
+            opacity: 0.6;
+            margin-left: 4px;
         }
 
-        #controlsHint {
+        #coords {
             position: absolute;
             bottom: 100px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 10;
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 0.8rem;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
             text-align: center;
-            letter-spacing: 0.5px;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 6px 16px;
-            border-radius: 20px;
-            backdrop-filter: blur(4px);
             pointer-events: none;
             user-select: none;
+            min-width: 300px;
+        }
+        #coords .pos-moskotch {
+            color: #ff6b35;
+        }
+        #coords .pos-subaru {
+            color: #35b5ff;
         }
 
         #loading {
@@ -124,27 +134,35 @@
         }
 
         @media (max-width: 700px) {
-            #ui { top: 12px; left: 12px; padding: 12px 16px; }
-            #ui h1 { font-size: 1.1rem; }
-            #carSelect { bottom: 20px; padding: 8px 14px; gap: 8px; flex-wrap: wrap; justify-content: center; }
-            #carSelect button { font-size: 0.8rem; padding: 6px 14px; }
-            #controlsHint { bottom: 80px; font-size: 0.7rem; padding: 4px 12px; }
+            #info { top: 12px; left: 12px; padding: 12px 16px; }
+            #info h1 { font-size: 1.1rem; }
+            #legend { bottom: 20px; padding: 8px 16px; gap: 16px; flex-wrap: wrap; justify-content: center; }
+            #legend .legend-text { font-size: 0.75rem; }
+            #coords { bottom: 80px; font-size: 0.75rem; min-width: unset; width: 90%; padding: 8px 12px; }
         }
     </style>
 </head>
 <body>
 
-    <div id="ui">
-        <h1>🚗 <span id="carName">Moskotch 21 41</span></h1>
-        <div class="sub">WASD / Стрелки — управление</div>
+    <div id="info">
+        <h1>🚗 Показ машин <small>Москвич 2141 и Subaru Outback на стартовой позиции</small></h1>
     </div>
 
-    <div id="carSelect">
-        <button id="btnMoskotch" class="active">Moskotch 21 41</button>
-        <button id="btnSubaru">Siburoo Outblack</button>
+    <div id="legend">
+        <div class="legend-item">
+            <div class="legend-color moskotch"></div>
+            <div class="legend-text">Moskotch 21 41 <small>(-58.93, -0.08, -50.91)</small></div>
+        </div>
+        <div class="legend-item">
+            <div class="legend-color subaru"></div>
+            <div class="legend-text">Siburoo Outblack <small>(0, 0, 0)</small></div>
+        </div>
     </div>
 
-    <div id="controlsHint">W / ↑ — вперёд &nbsp; S / ↓ — назад &nbsp; A/D / ←/→ — поворот</div>
+    <div id="coords">
+        <div class="pos-moskotch">🚗 Москвич: (-58.93, -0.08, -50.91)</div>
+        <div class="pos-subaru">🚙 Subaru: (0.00, 0.00, 0.00)</div>
+    </div>
 
     <div id="loading">
         <div class="spinner"></div>
@@ -154,165 +172,31 @@
     <!-- Подключаем A-Frame -->
     <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
 
-    <!-- Компонент для управления автомобилем -->
+    <!-- Компонент для отображения координат -->
     <script>
-        AFRAME.registerComponent('car-controls', {
-            schema: {
-                speed: { type: 'number', default: 0 },
-                maxSpeed: { type: 'number', default: 0.15 },
-                acceleration: { type: 'number', default: 0.005 },
-                friction: { type: 'number', default: 0.97 },
-                turnSpeed: { type: 'number', default: 0.02 }
-            },
-
+        AFRAME.registerComponent('show-coords', {
             init: function() {
-                this.speed = 0;
-                this.keys = {
-                    w: false,
-                    a: false,
-                    s: false,
-                    d: false,
-                    up: false,
-                    down: false,
-                    left: false,
-                    right: false
+                const el = this.el;
+                const id = el.id;
+                const coordsDiv = document.getElementById('coords');
+
+                this.updateCoords = function() {
+                    const pos = el.getAttribute('position');
+                    const label = id === 'moskotch' ? 'pos-moskotch' : 'pos-subaru';
+                    const name = id === 'moskotch' ? 'Москвич' : 'Subaru';
+                    const emoji = id === 'moskotch' ? '🚗' : '🚙';
+                    const color = id === 'moskotch' ? '#ff6b35' : '#35b5ff';
+
+                    // Обновляем текст
+                    const span = coordsDiv.querySelector(`.${label}`);
+                    if (span) {
+                        span.textContent = `${emoji} ${name}: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`;
+                        span.style.color = color;
+                    }
                 };
 
-                // Подписка на события клавиатуры
-                document.addEventListener('keydown', (e) => {
-                    const key = e.key.toLowerCase();
-                    if (key === 'w') this.keys.w = true;
-                    if (key === 'a') this.keys.a = true;
-                    if (key === 's') this.keys.s = true;
-                    if (key === 'd') this.keys.d = true;
-                    if (key === 'arrowup') { this.keys.up = true;
-                        e.preventDefault(); }
-                    if (key === 'arrowdown') { this.keys.down = true;
-                        e.preventDefault(); }
-                    if (key === 'arrowleft') { this.keys.left = true;
-                        e.preventDefault(); }
-                    if (key === 'arrowright') { this.keys.right = true;
-                        e.preventDefault(); }
-                });
-
-                document.addEventListener('keyup', (e) => {
-                    const key = e.key.toLowerCase();
-                    if (key === 'w') this.keys.w = false;
-                    if (key === 'a') this.keys.a = false;
-                    if (key === 's') this.keys.s = false;
-                    if (key === 'd') this.keys.d = false;
-                    if (key === 'arrowup') { this.keys.up = false;
-                        e.preventDefault(); }
-                    if (key === 'arrowdown') { this.keys.down = false;
-                        e.preventDefault(); }
-                    if (key === 'arrowleft') { this.keys.left = false;
-                        e.preventDefault(); }
-                    if (key === 'arrowright') { this.keys.right = false;
-                        e.preventDefault(); }
-                });
-            },
-
-            tick: function() {
-                const el = this.el;
-                const data = this.data;
-
-                // Определяем ускорение
-                let accel = 0;
-                if (this.keys.w || this.keys.up) accel = data.acceleration;
-                if (this.keys.s || this.keys.down) accel = -data.acceleration;
-
-                // Определяем поворот
-                let turn = 0;
-                if (this.keys.a || this.keys.left) turn = data.turnSpeed;
-                if (this.keys.d || this.keys.right) turn = -data.turnSpeed;
-
-                // Поворачиваем машину
-                if (turn !== 0) {
-                    const rot = el.getAttribute('rotation');
-                    el.setAttribute('rotation', {
-                        x: rot.x,
-                        y: rot.y + turn,
-                        z: rot.z
-                    });
-                }
-
-                // Обновляем скорость
-                this.speed += accel;
-                if (this.speed > data.maxSpeed) this.speed = data.maxSpeed;
-                if (this.speed < -data.maxSpeed * 0.5) this.speed = -data.maxSpeed * 0.5;
-                if (!accel) this.speed *= data.friction;
-                if (Math.abs(this.speed) < 0.0005) this.speed = 0;
-
-                // Двигаем машину вперёд по её локальной оси Z
-                if (Math.abs(this.speed) > 0.0005) {
-                    const forward = new THREE.Vector3(0, 0, -1);
-                    const quaternion = new THREE.Quaternion();
-                    const euler = new THREE.Euler(
-                        THREE.MathUtils.degToRad(el.getAttribute('rotation').x || 0),
-                        THREE.MathUtils.degToRad(el.getAttribute('rotation').y || 0),
-                        THREE.MathUtils.degToRad(el.getAttribute('rotation').z || 0)
-                    );
-                    quaternion.setFromEuler(euler);
-                    forward.applyQuaternion(quaternion);
-
-                    const pos = el.getAttribute('position');
-                    el.setAttribute('position', {
-                        x: pos.x + forward.x * this.speed,
-                        y: pos.y,
-                        z: pos.z + forward.z * this.speed
-                    });
-                }
-            }
-        });
-
-        // Компонент для камеры, следящей за машиной
-        AFRAME.registerComponent('follow-car', {
-            schema: {
-                target: { type: 'selector' },
-                offset: { type: 'vec3', default: { x: 0, y: 6, z: -10 } },
-                smoothness: { type: 'number', default: 0.08 }
-            },
-
-            tick: function() {
-                if (!this.data.target) return;
-
-                const targetPos = this.data.target.getAttribute('position');
-                const targetRot = this.data.target.getAttribute('rotation');
-
-                // Вычисляем смещение с учётом поворота машины
-                const offset = new THREE.Vector3(
-                    this.data.offset.x,
-                    this.data.offset.y,
-                    this.data.offset.z
-                );
-
-                const quaternion = new THREE.Quaternion();
-                const euler = new THREE.Euler(
-                    THREE.MathUtils.degToRad(targetRot.x || 0),
-                    THREE.MathUtils.degToRad(targetRot.y || 0),
-                    THREE.MathUtils.degToRad(targetRot.z || 0)
-                );
-                quaternion.setFromEuler(euler);
-                offset.applyQuaternion(quaternion);
-
-                // Целевая позиция камеры
-                const targetCamPos = new THREE.Vector3(
-                    targetPos.x + offset.x,
-                    targetPos.y + offset.y,
-                    targetPos.z + offset.z
-                );
-
-                // Плавное движение камеры
-                const el = this.el;
-                const currentPos = el.getAttribute('position');
-                el.setAttribute('position', {
-                    x: currentPos.x + (targetCamPos.x - currentPos.x) * this.data.smoothness,
-                    y: currentPos.y + (targetCamPos.y - currentPos.y) * this.data.smoothness,
-                    z: currentPos.z + (targetCamPos.z - currentPos.z) * this.data.smoothness
-                });
-
-                // Смотрим на машину
-                el.setAttribute('look-at', this.data.target.id);
+                // Обновляем каждый кадр
+                this.tick = this.updateCoords;
             }
         });
     </script>
@@ -342,15 +226,55 @@
         <!-- Сетка -->
         <a-entity grid="color: #6688ff; size: 200; divisions: 40" position="0 -0.49 0"></a-entity>
 
-        <!-- Стартовый круг -->
+        <!-- Стартовый круг в центре -->
+        <a-ring 
+            radius-inner="1.5" 
+            radius-outer="2.5" 
+            color="#35b5ff" 
+            opacity="0.3" 
+            rotation="-90 0 0" 
+            position="0 -0.48 0"
+        ></a-ring>
+
+        <!-- Метка "СТАРТ" в центре -->
+        <a-text 
+            value="СТАРТ Subaru" 
+            color="#35b5ff" 
+            position="0 0.5 -3" 
+            scale="1 1 1"
+            align="center"
+            opacity="0.5"
+        ></a-text>
+
+        <!-- Круг для Москвича -->
         <a-ring 
             radius-inner="1.5" 
             radius-outer="2.5" 
             color="#ff6b35" 
-            opacity="0.2" 
+            opacity="0.3" 
             rotation="-90 0 0" 
-            position="0 -0.48 0"
+            position="-58.93 -0.48 -50.91"
         ></a-ring>
+
+        <!-- Метка "МОСКВИЧ" -->
+        <a-text 
+            value="СТАРТ Москвича" 
+            color="#ff6b35" 
+            position="-58.93 0.5 -53.91" 
+            scale="1 1 1"
+            align="center"
+            opacity="0.5"
+        ></a-text>
+
+        <!-- Оси координат для наглядности -->
+        <!-- Ось X (красная) -->
+        <a-entity 
+            line="start: -60 0 -50; end: 60 0 -50; color: #ff3333; opacity: 0.3"
+        ></a-entity>
+        <!-- Ось Z (синяя) -->
+        <a-entity 
+            line="start: -58 0 -60; end: -58 0 60; color: #3333ff; opacity: 0.3"
+        ></a-entity>
 
         <!-- ===== МОСКВИЧ 2141 ===== -->
         <a-entity 
@@ -359,9 +283,24 @@
             position="-58.93 -0.08 -50.91"
             rotation="0 14.32 0"
             scale="1.2 1.2 1.2"
-            car-controls
             shadow
-        ></a-entity>
+            show-coords
+        >
+            <!-- Подпись над машиной -->
+            <a-text 
+                value="🚗 Москвич 2141" 
+                color="#ff6b35" 
+                position="0 1.5 0" 
+                scale="0.8 0.8 0.8"
+                align="center"
+                background="true"
+                background-color="rgba(0,0,0,0.6)"
+                background-padding="0.2"
+                border="true"
+                border-color="#ff6b35"
+                border-width="0.02"
+            ></a-text>
+        </a-entity>
 
         <!-- ===== SUBARU OUTBACK ===== -->
         <a-entity 
@@ -370,86 +309,56 @@
             position="0 0 0"
             rotation="0 0 0"
             scale="0.9 0.9 0.9"
-            car-controls
             shadow
-            visible="false"
-        ></a-entity>
+            show-coords
+        >
+            <!-- Подпись над машиной -->
+            <a-text 
+                value="🚙 Subaru Outback" 
+                color="#35b5ff" 
+                position="0 1.5 0" 
+                scale="0.8 0.8 0.8"
+                align="center"
+                background="true"
+                background-color="rgba(0,0,0,0.6)"
+                background-padding="0.2"
+                border="true"
+                border-color="#35b5ff"
+                border-width="0.02"
+            ></a-text>
+        </a-entity>
 
-        <!-- Камера, следящая за машиной -->
+        <!-- Камера, показывающая обе машины -->
         <a-entity 
             id="camera"
             camera="fov: 50"
-            position="0 6 -10"
-            follow-car="target: #moskotch; offset: 0 6 -10; smoothness: 0.08"
-            look-at="#moskotch"
+            position="-25 25 -35"
+            look-at="-20 -0.08 -25"
+        ></a-entity>
+
+        <!-- Управление камерой (OrbitControls) -->
+        <a-entity 
+            orbit-controls="
+                target: -20 -0.08 -25; 
+                minDistance: 5; 
+                maxDistance: 150;
+                enableDamping: true;
+                dampingFactor: 0.05;
+            "
         ></a-entity>
 
     </a-scene>
 
-    <!-- Логика переключения машин -->
+    <!-- Скрываем загрузку -->
     <script>
-        const scene = document.querySelector('a-scene');
-        const moskotch = document.getElementById('moskotch');
-        const subaru = document.getElementById('subaru');
-        const camera = document.getElementById('camera');
-        const carName = document.getElementById('carName');
-
-        let activeCar = 'moskotch';
-
-        function switchCar(name) {
-            if (activeCar === name) return;
-
-            // Скрываем текущую машину
-            if (activeCar === 'moskotch') {
-                moskotch.setAttribute('visible', 'false');
-            } else {
-                subaru.setAttribute('visible', 'false');
-            }
-
-            // Показываем новую
-            if (name === 'moskotch') {
-                subaru.setAttribute('visible', 'false');
-                moskotch.setAttribute('visible', 'true');
-                // Переносим позицию
-                const pos = subaru.getAttribute('position');
-                const rot = subaru.getAttribute('rotation');
-                moskotch.setAttribute('position', pos);
-                moskotch.setAttribute('rotation', rot);
-                // Меняем цель камеры
-                camera.setAttribute('follow-car', 'target', '#moskotch');
-                camera.setAttribute('look-at', '#moskotch');
-                carName.textContent = 'Moskotch 21 41';
-                activeCar = 'moskotch';
-            } else {
-                moskotch.setAttribute('visible', 'false');
-                subaru.setAttribute('visible', 'true');
-                // Переносим позицию
-                const pos = moskotch.getAttribute('position');
-                const rot = moskotch.getAttribute('rotation');
-                subaru.setAttribute('position', pos);
-                subaru.setAttribute('rotation', rot);
-                // Меняем цель камеры
-                camera.setAttribute('follow-car', 'target', '#subaru');
-                camera.setAttribute('look-at', '#subaru');
-                carName.textContent = 'Siburoo Outblack';
-                activeCar = 'subaru';
-            }
-
-            // Обновляем кнопки
-            document.getElementById('btnMoskotch').classList.toggle('active', name === 'moskotch');
-            document.getElementById('btnSubaru').classList.toggle('active', name === 'subaru');
-        }
-
-        document.getElementById('btnMoskotch').addEventListener('click', () => switchCar('moskotch'));
-        document.getElementById('btnSubaru').addEventListener('click', () => switchCar('subaru'));
-
-        // Скрываем загрузку после того, как модели загрузятся
         setTimeout(() => {
             document.getElementById('loading').style.display = 'none';
         }, 3000);
 
-        console.log('🚗 Гоночный симулятор на A-Frame запущен!');
-        console.log('📍 Москвич стартует в (-58.93, -0.08, -50.91) с поворотом 14.32°');
+        console.log('🖥️ Программа-показ запущена!');
+        console.log('📍 Москвич: (-58.93, -0.08, -50.91)');
+        console.log('📍 Subaru: (0, 0, 0)');
+        console.log('🖱️ Управление камерой: мышь — вращение, скролл — приближение');
     </script>
 </body>
 </html>

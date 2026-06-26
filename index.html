@@ -117,6 +117,8 @@
             flex-direction: column;
             gap: 8px;
             min-width: 180px;
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
         }
         #carSelector h4 {
             color: #888;
@@ -137,6 +139,7 @@
             transition: all 0.3s;
             text-align: left;
             font-weight: 400;
+            width: 100%;
         }
         .car-btn:hover {
             background: rgba(255, 255, 255, 0.1);
@@ -148,13 +151,47 @@
         .car-btn .emoji {
             margin-right: 8px;
         }
+        .car-btn .credit {
+            display: block;
+            font-size: 0.5rem;
+            color: #666;
+            margin-top: 2px;
+            padding-left: 4px;
+            line-height: 1.3;
+        }
+
+        #creditPanel {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(6px);
+            padding: 6px 16px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            color: #888;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            pointer-events: none;
+            user-select: none;
+            text-align: center;
+            max-width: 90%;
+            line-height: 1.4;
+        }
+        #creditPanel a {
+            color: #88ccff;
+            pointer-events: auto;
+        }
 
         @media (max-width: 768px) {
             #hud { padding: 8px 16px; min-width: auto; width: 90%; bottom: 16px; }
             #hud .speed { font-size: 1.5rem; }
             #controls-hint { font-size: 0.6rem; padding: 6px 14px; white-space: normal; max-width: 90%; top: 12px; }
-            #carSelector { top: 70px; right: 10px; padding: 12px; min-width: 140px; }
+            #carSelector { top: 70px; right: 10px; padding: 12px; min-width: 140px; max-height: calc(100vh - 160px); }
             .car-btn { font-size: 0.75rem; padding: 6px 10px; }
+            .car-btn .credit { font-size: 0.45rem; }
+            #creditPanel { bottom: 80px; font-size: 0.5rem; padding: 4px 12px; }
         }
     </style>
 </head>
@@ -162,13 +199,35 @@
 
     <div id="carSelector">
         <h4>🚗 Выбор машины</h4>
-        <button class="car-btn active" data-car="subaru">🚙 Soobaro Out Black</button>
-        <button class="car-btn" data-car="bmw">🚗 BEEMWA 22</button>
-        <button class="car-btn" data-car="nissan">🚘 Neasun Loral 2rbo</button>
+        <button class="car-btn active" data-car="subaru">
+            <span class="emoji">🚙</span> Soobaro Out Black
+            <span class="credit">Thanks to Scigh-on for free model</span>
+        </button>
+        <button class="car-btn" data-car="bmw">
+            <span class="emoji">🚗</span> BEEMWA 22
+            <span class="credit">© tonielpro520 · CC BY</span>
+        </button>
+        <button class="car-btn" data-car="nissan">
+            <span class="emoji">🚘</span> Neasun Loral 2rbo
+            <span class="credit">© own.guest · CC BY</span>
+        </button>
+        <button class="car-btn" data-car="mercedes">
+            <span class="emoji">🚙</span> Merci Vagen
+            <span class="credit">© Lexyc16 · CC BY</span>
+        </button>
+        <button class="car-btn" data-car="toyota">
+            <span class="emoji">🚗</span> Tantoya Parmezan
+            <span class="credit">© Daniel Zhabotinsky · CC BY</span>
+        </button>
     </div>
 
     <div id="controls-hint">
         <strong>W / ↑</strong> — вперёд &nbsp;·&nbsp; <strong>S / ↓</strong> — назад &nbsp;·&nbsp; <strong>A / ←</strong> &nbsp;<strong>D / →</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник
+    </div>
+
+    <div id="creditPanel">
+        🚗 Модели: 
+        <span id="creditText">Soobaro Out Black — Thanks to Scigh-on for free model</span>
     </div>
 
     <div id="hud">
@@ -200,7 +259,6 @@
         // --------------------------------------------------------------
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.Fog(0x87CEEB, 40, 80);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         camera.position.set(0, 3, 5);
@@ -238,164 +296,59 @@
         scene.add(ambientLight);
 
         // --------------------------------------------------------------
-        // 3. ГОРОД
+        // 3. ПОЛ (простая плоская поверхность)
         // --------------------------------------------------------------
-        const roadMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.9 });
-        const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.8 });
-
-        const roadGeo = new THREE.PlaneGeometry(40, 6);
-        const road1 = new THREE.Mesh(roadGeo, roadMat);
-        road1.rotation.x = -Math.PI / 2;
-        road1.position.set(0, -0.47, 0);
-        road1.receiveShadow = true;
-        scene.add(road1);
-
-        const road2 = new THREE.Mesh(roadGeo, roadMat);
-        road2.rotation.x = -Math.PI / 2;
-        road2.rotation.z = Math.PI / 2;
-        road2.position.set(0, -0.47, 0);
-        road2.receiveShadow = true;
-        scene.add(road2);
-
-        const lineMat = new THREE.MeshBasicMaterial({ color: 0xffff00 });
-        for (let i = -18; i <= 18; i += 3) {
-            if (Math.abs(i) < 1) continue;
-            const line = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1.5), lineMat);
-            line.rotation.x = -Math.PI / 2;
-            line.position.set(i, -0.46, 0);
-            scene.add(line);
-            
-            const line2 = new THREE.Mesh(new THREE.PlaneGeometry(0.3, 1.5), lineMat);
-            line2.rotation.x = -Math.PI / 2;
-            line2.position.set(0, -0.46, i);
-            scene.add(line2);
-        }
-
-        // Массив для хранения зданий (для коллизий)
-        const buildings = [];
-
-        function createBuilding(x, z, w, d, h, color) {
-            const geo = new THREE.BoxGeometry(w, h, d);
-            const mat = new THREE.MeshStandardMaterial({ 
-                color: color, 
-                roughness: 0.6,
-                metalness: 0.1
-            });
-            const building = new THREE.Mesh(geo, mat);
-            building.position.set(x, h/2 - 0.5, z);
-            building.castShadow = true;
-            building.receiveShadow = true;
-            scene.add(building);
-
-            // Сохраняем данные здания для коллизий
-            buildings.push({
-                mesh: building,
-                minX: x - w/2,
-                maxX: x + w/2,
-                minZ: z - d/2,
-                maxZ: z + d/2
-            });
-
-            const windowMat = new THREE.MeshBasicMaterial({ color: 0x88ccff });
-            for (let i = 0; i < Math.floor(w/2); i++) {
-                for (let j = 0; j < Math.floor(h/2); j++) {
-                    const window = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.6), windowMat);
-                    window.position.set(
-                        x - w/2 + 0.8 + i * 1.2,
-                        j * 1.2 + 0.6,
-                        z + d/2 + 0.01
-                    );
-                    scene.add(window);
-                    const window2 = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.6), windowMat);
-                    window2.position.set(
-                        x - w/2 + 0.8 + i * 1.2,
-                        j * 1.2 + 0.6,
-                        z - d/2 - 0.01
-                    );
-                    window2.rotation.y = Math.PI;
-                    scene.add(window2);
-                }
-            }
-        }
-
-        const buildingColors = [0x8B7355, 0xCD853F, 0xDEB887, 0xD2691E, 0xA0522D, 0x8B4513];
+        // Текстура травы
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const ctx = canvas.getContext('2d');
         
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                const h = 1.5 + Math.random() * 3;
-                const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                createBuilding(5 + i * 3, -5 - j * 3, 2 + Math.random() * 1, 2 + Math.random() * 1, h, color);
-            }
+        ctx.fillStyle = '#4a8c3f';
+        ctx.fillRect(0, 0, 512, 512);
+        
+        for (let i = 0; i < 30000; i++) {
+            const x = Math.random() * 512;
+            const y = Math.random() * 512;
+            const size = 1 + Math.random() * 3;
+            const green = 100 + Math.random() * 80;
+            ctx.fillStyle = `rgb(50, ${green}, 30)`;
+            ctx.fillRect(x, y, size, size);
         }
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(30, 30);
 
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                const h = 1.5 + Math.random() * 3;
-                const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                createBuilding(-5 - i * 3, -5 - j * 3, 2 + Math.random() * 1, 2 + Math.random() * 1, h, color);
-            }
-        }
+        const groundGeo = new THREE.PlaneGeometry(80, 80);
+        const groundMat = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.8,
+            metalness: 0.0,
+        });
+        const ground = new THREE.Mesh(groundGeo, groundMat);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = -0.5;
+        ground.receiveShadow = true;
+        scene.add(ground);
 
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                const h = 1.5 + Math.random() * 3;
-                const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                createBuilding(5 + i * 3, 5 + j * 3, 2 + Math.random() * 1, 2 + Math.random() * 1, h, color);
-            }
-        }
+        // Сетка для ориентации
+        const gridHelper = new THREE.GridHelper(40, 20, 0x88dd88, 0x44aa44);
+        gridHelper.position.y = -0.48;
+        scene.add(gridHelper);
 
-        for (let i = 0; i < 3; i++) {
-            for (let j = 0; j < 3; j++) {
-                const h = 1.5 + Math.random() * 3;
-                const color = buildingColors[Math.floor(Math.random() * buildingColors.length)];
-                createBuilding(-5 - i * 3, 5 + j * 3, 2 + Math.random() * 1, 2 + Math.random() * 1, h, color);
-            }
-        }
-
-        const sideMat = new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.9 });
-        for (let i = -20; i <= 20; i += 4) {
-            if (Math.abs(i) < 2) continue;
-            const s1 = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 38), sideMat);
-            s1.rotation.x = -Math.PI / 2;
-            s1.position.set(i, -0.46, 0);
-            scene.add(s1);
-            
-            const s2 = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 38), sideMat);
-            s2.rotation.x = -Math.PI / 2;
-            s2.position.set(0, -0.46, i);
-            scene.add(s2);
-        }
-
-        const grassMat = new THREE.MeshStandardMaterial({ color: 0x4a8c3f, roughness: 0.9 });
-        for (let i = -18; i <= 18; i += 8) {
-            for (let j = -18; j <= 18; j += 8) {
-                if (Math.abs(i) < 2 && Math.abs(j) < 2) continue;
-                const g = new THREE.Mesh(new THREE.PlaneGeometry(3, 3), grassMat);
-                g.rotation.x = -Math.PI / 2;
-                g.position.set(i, -0.47, j);
-                scene.add(g);
-            }
-        }
-
-        function createLamppost(x, z) {
-            const poleMat = new THREE.MeshStandardMaterial({ color: 0x666666, metalness: 0.8, roughness: 0.3 });
-            const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 1.5), poleMat);
-            pole.position.set(x, 0.25, z);
-            scene.add(pole);
-            
-            const lampMat = new THREE.MeshStandardMaterial({ color: 0xffff88, emissive: 0xffff44, emissiveIntensity: 0.2 });
-            const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), lampMat);
-            lamp.position.set(x, 1.0, z);
-            scene.add(lamp);
-        }
-
-        for (let i = -16; i <= 16; i += 8) {
-            if (Math.abs(i) < 2) continue;
-            createLamppost(i, -2.5);
-            createLamppost(i, 2.5);
-            createLamppost(-2.5, i);
-            createLamppost(2.5, i);
-        }
+        // Маркер в центре
+        const markerGeo = new THREE.RingGeometry(0.4, 0.6, 32);
+        const markerMat = new THREE.MeshBasicMaterial({
+            color: 0xff6b35,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.3,
+        });
+        const marker = new THREE.Mesh(markerGeo, markerMat);
+        marker.rotation.x = -Math.PI / 2;
+        marker.position.y = -0.47;
+        scene.add(marker);
 
         // --------------------------------------------------------------
         // 4. ЗАГРУЗКА МОДЕЛЕЙ
@@ -419,24 +372,56 @@
         const MAX_SPEED = 0.5;
         const TURN_SPEED = 0.03;
         const FRICTION = 0.98;
-        const HANDBRAKE_FRICTION = 0.85; // Сильное трение при ручнике
 
         const keys = {
             w: false,
             s: false,
             a: false,
             d: false,
+            up: false,
+            down: false,
+            left: false,
+            right: false,
             space: false,
-            arrowup: false,
-            arrowdown: false,
-            arrowleft: false,
-            arrowright: false,
         };
 
+        // Список моделей с описаниями
         const modelsList = [
-            { id: 'subaru', name: '🚙 Soobaro Out Black', file: 'subaru_outback.glb', rotation: 0 },
-            { id: 'bmw', name: '🚗 BEEMWA 22', file: 'bmw2002.glb', rotation: 0 },
-            { id: 'nissan', name: '🚘 Neasun Loral 2rbo', file: 'nissan_laurel.glb', rotation: Math.PI / 2 }
+            { 
+                id: 'subaru', 
+                name: '🚙 Soobaro Out Black', 
+                file: 'subaru_outback.glb', 
+                rotation: 0,
+                credit: 'Thanks to Scigh-on for free model'
+            },
+            { 
+                id: 'bmw', 
+                name: '🚗 BEEMWA 22', 
+                file: 'bmw2002.glb', 
+                rotation: 0,
+                credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+            },
+            { 
+                id: 'nissan', 
+                name: '🚘 Neasun Loral 2rbo', 
+                file: 'nissan_laurel.glb', 
+                rotation: Math.PI / 2,
+                credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+            },
+            { 
+                id: 'mercedes', 
+                name: '🚙 Merci Vagen', 
+                file: 'gelik.glb', 
+                rotation: 0,
+                credit: '"Mercedes Benz G-class W263" (https://skfb.ly/6SHrP) by Lexyc16 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+            },
+            { 
+                id: 'toyota', 
+                name: '🚗 Tantoya Parmezan', 
+                file: 'toyota_tezzo.glb', 
+                rotation: 0,
+                credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+            }
         ];
 
         const loadedModels = {};
@@ -517,6 +502,7 @@
                     currentModelId = firstModel.id;
                     carLoaded = true;
                     document.getElementById('modelNameDisplay').textContent = firstModel.name;
+                    document.getElementById('creditText').textContent = firstModel.credit;
                 }
 
                 loadingDiv.style.display = 'none';
@@ -555,13 +541,13 @@
 
                 const modelInfo = modelsList.find(m => m.id === id);
                 document.getElementById('modelNameDisplay').textContent = modelInfo.name;
+                document.getElementById('creditText').textContent = modelInfo.credit;
 
-                // Сбрасываем позицию и скорость
                 carState.position.set(0, 0, 0);
                 carState.velocity.set(0, 0, 0);
                 carState.rotation = 0;
                 currentCar.position.set(0, 0, 0);
-                currentCar.rotation.set(0, modelInfo.rotation || 0, 0);
+                currentCar.rotation.y = modelInfo.rotation || 0;
             });
         });
 
@@ -569,50 +555,36 @@
         // 6. УПРАВЛЕНИЕ
         // --------------------------------------------------------------
         document.addEventListener('keydown', (e) => {
-            const key = e.key.toLowerCase();
+            const key = e.key;
             
-            if (key === 'w') { keys.w = true; e.preventDefault(); }
-            if (key === 's') { keys.s = true; e.preventDefault(); }
-            if (key === 'a') { keys.a = true; e.preventDefault(); }
-            if (key === 'd') { keys.d = true; e.preventDefault(); }
+            if (key === 'w' || key === 'W') { keys.w = true; e.preventDefault(); }
+            if (key === 's' || key === 'S') { keys.s = true; e.preventDefault(); }
+            if (key === 'a' || key === 'A') { keys.a = true; e.preventDefault(); }
+            if (key === 'd' || key === 'D') { keys.d = true; e.preventDefault(); }
             
-            if (e.key === 'ArrowUp') { keys.arrowup = true; e.preventDefault(); }
-            if (e.key === 'ArrowDown') { keys.arrowdown = true; e.preventDefault(); }
-            if (e.key === 'ArrowLeft') { keys.arrowleft = true; e.preventDefault(); }
-            if (e.key === 'ArrowRight') { keys.arrowright = true; e.preventDefault(); }
+            if (key === 'ArrowUp') { keys.up = true; e.preventDefault(); }
+            if (key === 'ArrowDown') { keys.down = true; e.preventDefault(); }
+            if (key === 'ArrowLeft') { keys.left = true; e.preventDefault(); }
+            if (key === 'ArrowRight') { keys.right = true; e.preventDefault(); }
             
-            if (e.key === ' ') { keys.space = true; e.preventDefault(); }
+            if (key === ' ') { keys.space = true; e.preventDefault(); }
         });
 
         document.addEventListener('keyup', (e) => {
-            const key = e.key.toLowerCase();
+            const key = e.key;
             
-            if (key === 'w') { keys.w = false; e.preventDefault(); }
-            if (key === 's') { keys.s = false; e.preventDefault(); }
-            if (key === 'a') { keys.a = false; e.preventDefault(); }
-            if (key === 'd') { keys.d = false; e.preventDefault(); }
+            if (key === 'w' || key === 'W') { keys.w = false; e.preventDefault(); }
+            if (key === 's' || key === 'S') { keys.s = false; e.preventDefault(); }
+            if (key === 'a' || key === 'A') { keys.a = false; e.preventDefault(); }
+            if (key === 'd' || key === 'D') { keys.d = false; e.preventDefault(); }
             
-            if (e.key === 'ArrowUp') { keys.arrowup = false; e.preventDefault(); }
-            if (e.key === 'ArrowDown') { keys.arrowdown = false; e.preventDefault(); }
-            if (e.key === 'ArrowLeft') { keys.arrowleft = false; e.preventDefault(); }
-            if (e.key === 'ArrowRight') { keys.arrowright = false; e.preventDefault(); }
+            if (key === 'ArrowUp') { keys.up = false; e.preventDefault(); }
+            if (key === 'ArrowDown') { keys.down = false; e.preventDefault(); }
+            if (key === 'ArrowLeft') { keys.left = false; e.preventDefault(); }
+            if (key === 'ArrowRight') { keys.right = false; e.preventDefault(); }
             
-            if (e.key === ' ') { keys.space = false; e.preventDefault(); }
+            if (key === ' ') { keys.space = false; e.preventDefault(); }
         });
-
-        // Проверка коллизии с зданиями
-        function checkBuildingCollision(x, z) {
-            const carRadius = 1.0; // Радиус машины
-            for (const building of buildings) {
-                if (x + carRadius > building.minX && 
-                    x - carRadius < building.maxX && 
-                    z + carRadius > building.minZ && 
-                    z - carRadius < building.maxZ) {
-                    return true;
-                }
-            }
-            return false;
-        }
 
         function updateCar() {
             if (!currentCar || !carLoaded) return;
@@ -622,30 +594,19 @@
             let acceleration = 0;
             let turn = 0;
 
-            // Ручник
-            const handbrake = keys.space;
-
-            if (keys.w || keys.arrowup) {
+            if (keys.w || keys.up) {
                 acceleration = ENGINE_FORCE;
             }
             
-            if (keys.s || keys.arrowdown) {
+            if (keys.s || keys.down) {
                 acceleration = -REVERSE_FORCE;
             }
 
-            if (keys.a || keys.arrowleft) turn = TURN_SPEED;
-            if (keys.d || keys.arrowright) turn = -TURN_SPEED;
+            if (keys.a || keys.left) turn = TURN_SPEED;
+            if (keys.d || keys.right) turn = -TURN_SPEED;
 
-            // Поворот зависит от направления движения
-            const speed = velocity.length();
-            if (speed > 0.005) {
-                // Определяем направление движения (вперёд или назад)
-                const forward = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
-                const dot = velocity.dot(forward);
-                const direction = dot >= 0 ? 1 : -1;
-                
-                // Поворот в зависимости от направления
-                carState.rotation += turn * direction;
+            if (Math.abs(velocity.length()) > 0.005) {
+                carState.rotation += turn;
             }
 
             const forward = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
@@ -656,32 +617,15 @@
                 velocity.multiplyScalar(MAX_SPEED / currentSpeed);
             }
 
-            // Применяем трение
-            if (handbrake) {
-                velocity.multiplyScalar(HANDBRAKE_FRICTION);
-            } else {
-                velocity.multiplyScalar(FRICTION);
-            }
+            velocity.multiplyScalar(FRICTION);
 
             if (velocity.length() < 0.001) {
                 velocity.set(0, 0, 0);
             }
 
-            // Пробуем двигаться с проверкой коллизий
-            const newX = position.x + velocity.x;
-            const newZ = position.z + velocity.z;
+            position.add(velocity);
 
-            // Проверяем коллизии с зданиями
-            if (!checkBuildingCollision(newX, newZ)) {
-                position.x = newX;
-                position.z = newZ;
-            } else {
-                // Если коллизия, останавливаемся
-                velocity.set(0, 0, 0);
-            }
-
-            // Границы карты
-            const BOUNDARY = 18;
+            const BOUNDARY = 35;
             if (Math.abs(position.x) > BOUNDARY) {
                 position.x = Math.sign(position.x) * BOUNDARY;
                 velocity.x = 0;
@@ -697,16 +641,14 @@
             const baseRotation = modelInfo ? modelInfo.rotation || 0 : 0;
             currentCar.rotation.y = rotation + baseRotation;
 
-            // Наклон при повороте
-            if (Math.abs(turn) > 0.001 && speed > 0.05) {
-                const tilt = -turn * speed * 0.5;
-                currentCar.rotation.z = THREE.MathUtils.lerp(currentCar.rotation.z, tilt, 0.1);
+            if (Math.abs(turn) > 0.001 && velocity.length() > 0.05) {
+                const tilt = -turn * velocity.length() * 0.5;
+                currentCar.rotation.z = tilt;
             } else {
-                currentCar.rotation.z = THREE.MathUtils.lerp(currentCar.rotation.z, 0, 0.1);
+                currentCar.rotation.z *= 0.9;
             }
 
-            // Убираем "плавание" - фиксируем Y позицию
-            currentCar.position.y = 0;
+            currentCar.position.y = 0 + Math.sin(Date.now() / 500) * 0.002;
 
             const speedKmh = Math.round(velocity.length() * 150);
             document.getElementById('speedDisplay').textContent = speedKmh;
@@ -720,7 +662,7 @@
         // --------------------------------------------------------------
         const CAMERA_DISTANCE = 5;
         const CAMERA_HEIGHT = 3;
-        const CAMERA_SMOOTH = 0.08; // Уменьшили для более плавной камеры
+        const CAMERA_SMOOTH = 0.1;
 
         let cameraTarget = new THREE.Vector3(0, 0.5, 0);
 
@@ -767,9 +709,10 @@
         }
         animate();
 
-        console.log('🚗 Городской симулятор запущен!');
+        console.log('🚗 Симулятор запущен!');
         console.log('📍 Спавн в центре (0, 0, 0)');
-        console.log('📖 Управление: W/↑-вперёд, S/↓-назад, A/←, D/→-руль, Пробел-ручник');
+        console.log('📖 Управление: W/↑-вперёд, S/↓-назад, A/←-влево, D/→-вправо, Пробел-ручник');
+        console.log('🚗 5 машин с лицензиями Creative Commons');
     </script>
 </body>
 </html>

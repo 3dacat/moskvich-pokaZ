@@ -401,56 +401,64 @@
                 name: '🚙 Soobaro Out Black', 
                 file: 'subaru_outback.glb', 
                 rotation: 0,
-                credit: 'Thanks to Scigh-on for free model'
+                credit: 'Thanks to Scigh-on for free model',
+                maxSpeed: 0.5
             },
             { 
                 id: 'bmw', 
                 name: '🚗 BEEMWA 22', 
                 file: 'bmw2002.glb', 
                 rotation: 0,
-                credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+                credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
+                maxSpeed: 0.5
             },
             { 
                 id: 'nissan', 
                 name: '🚘 Neasun Loral 2rbo', 
                 file: 'nissan_laurel.glb', 
                 rotation: Math.PI / 2,
-                credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+                credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
+                maxSpeed: 0.5
             },
             { 
                 id: 'mercedes', 
                 name: '🚙 Tantoya Korova', 
                 file: 'gelik.glb', 
                 rotation: 0,
-                credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+                credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
+                maxSpeed: 0.5
             },
             { 
                 id: 'toyota', 
                 name: '🚗 Tantoya Parmezan', 
                 file: 'toyota_tezzo.glb', 
                 rotation: -Math.PI / 2,
-                credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+                credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
+                maxSpeed: 0.5
             },
             { 
                 id: 'pagani', 
                 name: '🏎️ Pagani Sportline', 
                 file: 'pagani1.glb', 
                 rotation: 0,
-                credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+                credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
+                maxSpeed: 0.5
             },
             { 
                 id: 'hypergolf', 
                 name: '🚗 Hypergolf', 
                 file: 'Hypergolf.glb', 
                 rotation: 0,
-                credit: 'Free Standard'
+                credit: 'Free Standard',
+                maxSpeed: 0.5
             },
             { 
                 id: 'tank', 
                 name: '🎖️ TTTank', 
                 file: 'low_poly_tank.glb', 
                 rotation: 0,
-                credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+                credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
+                maxSpeed: 0.23 // 35 км/ч (0.23 * 150 = 34.5 км/ч)
             }
         ];
 
@@ -630,7 +638,7 @@
             let acceleration = 0;
             let turn = 0;
 
-            // Управление для всех машин (включая танк)
+            // Управление для всех машин
             if (keys.w || keys.up) {
                 acceleration = ENGINE_FORCE;
             }
@@ -648,8 +656,13 @@
             velocity.add(forward.clone().multiplyScalar(acceleration));
 
             const currentSpeed = velocity.length();
-            if (currentSpeed > MAX_SPEED) {
-                velocity.multiplyScalar(MAX_SPEED / currentSpeed);
+            
+            // Получаем максимальную скорость для текущей модели
+            const modelInfo = modelsList.find(m => m.id === currentModelId);
+            const maxSpeed = modelInfo ? modelInfo.maxSpeed : MAX_SPEED;
+            
+            if (currentSpeed > maxSpeed) {
+                velocity.multiplyScalar(maxSpeed / currentSpeed);
             }
 
             velocity.multiplyScalar(FRICTION);
@@ -672,7 +685,6 @@
 
             currentCar.position.copy(position);
             
-            const modelInfo = modelsList.find(m => m.id === currentModelId);
             const baseRotation = modelInfo ? modelInfo.rotation || 0 : 0;
             currentCar.rotation.y = rotation + baseRotation;
 
@@ -746,7 +758,7 @@
 
         console.log('🚗 Симулятор запущен!');
         console.log('📍 Все машины в центре (0, 0, 0)');
-        console.log('🎖️ TTTank — новый танк!');
+        console.log('🎖️ TTTank — дулом вперёд, макс. скорость 35 км/ч!');
         console.log('📖 Управление: W/↑-вперёд, S/↓-назад, A/←-влево, D/→-вправо, Пробел-ручник');
         console.log('🚗 8 машин с лицензиями');
     </script>

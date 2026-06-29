@@ -55,6 +55,12 @@
             font-weight: 500;
             margin-top: 2px;
         }
+        #hud .altitude {
+            font-size: 0.8rem;
+            color: #88ff88;
+            font-family: 'Courier New', monospace;
+            margin-top: 2px;
+        }
 
         #controls-hint {
             position: absolute;
@@ -159,6 +165,16 @@
             padding-left: 4px;
             line-height: 1.3;
         }
+        .car-btn .flying-badge {
+            display: inline-block;
+            background: #ff6b35;
+            color: #fff;
+            font-size: 0.5rem;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
 
         #creditPanel {
             position: absolute;
@@ -227,6 +243,11 @@
             <span class="emoji">🚗</span> Hypergolf
             <span class="credit">Free Standard</span>
         </button>
+        <button class="car-btn" data-car="dragon">
+            <span class="emoji">🐉</span> Dragon Beetle
+            <span class="flying-badge">✈️ ЛЕТАЕТ</span>
+            <span class="credit">Free Standard</span>
+        </button>
     </div>
 
     <div id="controls-hint">
@@ -241,6 +262,7 @@
     <div id="hud">
         <div class="speed"><span id="speedDisplay">0</span> <small>км/ч</small></div>
         <div class="coords" id="coordDisplay">📍 0.00 · 0.00 · 0.00</div>
+        <div class="altitude" id="altitudeDisplay">📏 Высота: 0.00 м</div>
         <div class="model-name" id="modelNameDisplay">🚙 Soobaro Out Black</div>
     </div>
 
@@ -370,6 +392,7 @@
             position: new THREE.Vector3(0, 0, 0),
             velocity: new THREE.Vector3(0, 0, 0),
             rotation: 0,
+            altitude: 0, // Для летающих машин
         };
 
         const ENGINE_FORCE = 0.04;
@@ -377,6 +400,7 @@
         const MAX_SPEED = 0.5;
         const TURN_SPEED = 0.03;
         const FRICTION = 0.98;
+        const ALTITUDE_SPEED = 0.02; // Скорость подъёма/спуска
 
         const keys = {
             w: false,
@@ -397,6 +421,7 @@
                 name: '🚙 Soobaro Out Black', 
                 file: 'subaru_outback.glb', 
                 rotation: 0,
+                canFly: false,
                 credit: 'Thanks to Scigh-on for free model'
             },
             { 
@@ -404,6 +429,7 @@
                 name: '🚗 BEEMWA 22', 
                 file: 'bmw2002.glb', 
                 rotation: 0,
+                canFly: false,
                 credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -411,6 +437,7 @@
                 name: '🚘 Neasun Loral 2rbo', 
                 file: 'nissan_laurel.glb', 
                 rotation: Math.PI / 2,
+                canFly: false,
                 credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -418,6 +445,7 @@
                 name: '🚙 Tantoya Korova', 
                 file: 'gelik.glb', 
                 rotation: 0,
+                canFly: false,
                 credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -425,6 +453,7 @@
                 name: '🚗 Tantoya Parmezan', 
                 file: 'toyota_tezzo.glb', 
                 rotation: -Math.PI / 2,
+                canFly: false,
                 credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -432,6 +461,7 @@
                 name: '🏎️ Pagani Sportline', 
                 file: 'pagani1.glb', 
                 rotation: 0,
+                canFly: false,
                 credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -439,6 +469,15 @@
                 name: '🚗 Hypergolf', 
                 file: 'Hypergolf.glb', 
                 rotation: 0,
+                canFly: false,
+                credit: 'Free Standard'
+            },
+            { 
+                id: 'dragon', 
+                name: '🐉 Dragon Beetle', 
+                file: 'flyflyfly.glb', 
+                rotation: 0,
+                canFly: true,
                 credit: 'Free Standard'
             }
         ];
@@ -527,6 +566,7 @@
                     carLoaded = true;
                     document.getElementById('modelNameDisplay').textContent = firstModel.name;
                     document.getElementById('creditText').textContent = firstModel.credit;
+                    document.getElementById('altitudeDisplay').style.display = 'none';
                 }
 
                 loadingDiv.style.display = 'none';
@@ -567,10 +607,22 @@
                 document.getElementById('modelNameDisplay').textContent = modelInfo.name;
                 document.getElementById('creditText').textContent = modelInfo.credit;
 
+                // Показываем/скрываем высоту
+                if (modelInfo.canFly) {
+                    document.getElementById('altitudeDisplay').style.display = 'block';
+                    document.getElementById('controls-hint').innerHTML = 
+                        '<strong>W / ↑</strong> — подъём &nbsp;·&nbsp; <strong>S / ↓</strong> — спуск &nbsp;·&nbsp; <strong>A / ←</strong> &nbsp;<strong>D / →</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;🐉 ЛЕТАЕТ!';
+                } else {
+                    document.getElementById('altitudeDisplay').style.display = 'none';
+                    document.getElementById('controls-hint').innerHTML = 
+                        '<strong>W / ↑</strong> — вперёд &nbsp;·&nbsp; <strong>S / ↓</strong> — назад &nbsp;·&nbsp; <strong>A / ←</strong> &nbsp;<strong>D / →</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник';
+                }
+
                 // Сброс позиции в центр
                 carState.position.set(0, 0, 0);
                 carState.velocity.set(0, 0, 0);
                 carState.rotation = 0;
+                carState.altitude = 0;
                 currentCar.position.set(0, 0, 0);
                 currentCar.rotation.y = modelInfo.rotation || 0;
             });
@@ -614,42 +666,77 @@
         function updateCar() {
             if (!currentCar || !carLoaded) return;
 
-            const { position, velocity, rotation } = carState;
+            const { position, velocity, rotation, altitude } = carState;
+            const modelInfo = modelsList.find(m => m.id === currentModelId);
+            const canFly = modelInfo ? modelInfo.canFly : false;
 
             let acceleration = 0;
             let turn = 0;
 
-            if (keys.w || keys.up) {
-                acceleration = ENGINE_FORCE;
-            }
-            
-            if (keys.s || keys.down) {
-                acceleration = -REVERSE_FORCE;
+            // Для летающих машин: W/↑ - подъём, S/↓ - спуск
+            if (canFly) {
+                if (keys.w || keys.up) {
+                    carState.altitude += ALTITUDE_SPEED;
+                }
+                if (keys.s || keys.down) {
+                    carState.altitude -= ALTITUDE_SPEED;
+                }
+                // Ограничиваем высоту
+                carState.altitude = Math.max(0, Math.min(8, carState.altitude));
+                
+                // Движение вперёд-назад для летающих машин (A/D для поворота)
+                if (keys.a || keys.left) turn = TURN_SPEED;
+                if (keys.d || keys.right) turn = -TURN_SPEED;
+                
+                // Автоматическое движение вперёд для летающих машин
+                acceleration = 0.02;
+            } else {
+                // Обычное управление для наземных машин
+                if (keys.w || keys.up) {
+                    acceleration = ENGINE_FORCE;
+                }
+                if (keys.s || keys.down) {
+                    acceleration = -REVERSE_FORCE;
+                }
+                if (keys.a || keys.left) turn = TURN_SPEED;
+                if (keys.d || keys.right) turn = -TURN_SPEED;
             }
 
-            if (keys.a || keys.left) turn = TURN_SPEED;
-            if (keys.d || keys.right) turn = -TURN_SPEED;
-
-            if (Math.abs(velocity.length()) > 0.005) {
+            // Поворот
+            if (Math.abs(velocity.length()) > 0.005 || canFly) {
                 carState.rotation += turn;
             }
 
+            // Движение
             const forward = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
-            velocity.add(forward.clone().multiplyScalar(acceleration));
+            
+            if (canFly) {
+                // Для летающих машин - постоянное движение вперёд
+                velocity.add(forward.clone().multiplyScalar(acceleration));
+                // Трение в воздухе
+                velocity.multiplyScalar(0.995);
+            } else {
+                velocity.add(forward.clone().multiplyScalar(acceleration));
+            }
 
+            // Ограничиваем скорость
             const currentSpeed = velocity.length();
             if (currentSpeed > MAX_SPEED) {
                 velocity.multiplyScalar(MAX_SPEED / currentSpeed);
             }
 
-            velocity.multiplyScalar(FRICTION);
+            if (!canFly) {
+                velocity.multiplyScalar(FRICTION);
+            }
 
             if (velocity.length() < 0.001) {
                 velocity.set(0, 0, 0);
             }
 
+            // Обновляем позицию
             position.add(velocity);
 
+            // Границы
             const BOUNDARY = 35;
             if (Math.abs(position.x) > BOUNDARY) {
                 position.x = Math.sign(position.x) * BOUNDARY;
@@ -660,23 +747,24 @@
                 velocity.z = 0;
             }
 
+            // Применяем трансформации
             currentCar.position.copy(position);
             
-            // Учитываем базовый поворот модели
-            const modelInfo = modelsList.find(m => m.id === currentModelId);
-            const baseRotation = modelInfo ? modelInfo.rotation || 0 : 0;
-            currentCar.rotation.y = rotation + baseRotation;
-
-            // Наклон при повороте
-            if (Math.abs(turn) > 0.001 && velocity.length() > 0.05) {
-                const tilt = -turn * velocity.length() * 0.5;
-                currentCar.rotation.z = tilt;
+            // Высота
+            if (canFly) {
+                currentCar.position.y = carState.altitude;
+                // Лёгкое покачивание для летающих машин
+                currentCar.rotation.z = Math.sin(Date.now() / 1000) * 0.02;
+                currentCar.rotation.x = Math.sin(Date.now() / 1500) * 0.01;
             } else {
+                currentCar.position.y = 0 + Math.sin(Date.now() / 500) * 0.002;
                 currentCar.rotation.z *= 0.9;
+                currentCar.rotation.x *= 0.9;
             }
 
-            // Подвеска (лёгкое покачивание)
-            currentCar.position.y = 0 + Math.sin(Date.now() / 500) * 0.002;
+            // Поворот модели
+            const baseRotation = modelInfo ? modelInfo.rotation || 0 : 0;
+            currentCar.rotation.y = rotation + baseRotation;
 
             // HUD
             const speedKmh = Math.round(velocity.length() * 150);
@@ -684,6 +772,11 @@
 
             document.getElementById('coordDisplay').textContent =
                 `📍 ${position.x.toFixed(2)} · ${position.y.toFixed(2)} · ${position.z.toFixed(2)}`;
+
+            if (canFly) {
+                document.getElementById('altitudeDisplay').textContent = 
+                    `📏 Высота: ${carState.altitude.toFixed(2)} м`;
+            }
         }
 
         // --------------------------------------------------------------
@@ -740,8 +833,9 @@
 
         console.log('🚗 Симулятор запущен!');
         console.log('📍 Все машины в центре (0, 0, 0)');
-        console.log('📖 Управление: W/↑-вперёд, S/↓-назад, A/←-влево, D/→-вправо, Пробел-ручник');
-        console.log('🚗 7 машин с лицензиями');
+        console.log('🐉 Dragon Beetle умеет летать! W/↑ - подъём, S/↓ - спуск');
+        console.log('📖 Управление: W/↑-вперёд/подъём, S/↓-назад/спуск, A/←, D/→-руль, Пробел-ручник');
+        console.log('🚗 8 машин с лицензиями');
     </script>
 </body>
 </html>

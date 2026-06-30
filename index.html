@@ -534,7 +534,7 @@
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
 
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 2000);
         camera.position.set(0, 3, 5);
 
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -547,56 +547,56 @@
         document.body.appendChild(renderer.domElement);
 
         // --------------------------------------------------------------
-        // 2. ОСВЕЩЕНИЕ
+        // 2. ОСВЕЩЕНИЕ (увеличено для большого поля)
         // --------------------------------------------------------------
         const sunLight = new THREE.DirectionalLight(0xffeedd, 2.5);
-        sunLight.position.set(10, 15, 8);
+        sunLight.position.set(100, 150, 80);
         sunLight.castShadow = true;
-        sunLight.shadow.mapSize.width = 2048;
-        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.mapSize.width = 4096;
+        sunLight.shadow.mapSize.height = 4096;
         sunLight.shadow.camera.near = 0.1;
-        sunLight.shadow.camera.far = 60;
-        sunLight.shadow.camera.left = -30;
-        sunLight.shadow.camera.right = 30;
-        sunLight.shadow.camera.top = 30;
-        sunLight.shadow.camera.bottom = -30;
+        sunLight.shadow.camera.far = 500;
+        sunLight.shadow.camera.left = -300;
+        sunLight.shadow.camera.right = 300;
+        sunLight.shadow.camera.top = 300;
+        sunLight.shadow.camera.bottom = -300;
         scene.add(sunLight);
 
         const fillLight = new THREE.DirectionalLight(0x88ccff, 0.8);
-        fillLight.position.set(-5, 3, -8);
+        fillLight.position.set(-50, 30, -80);
         scene.add(fillLight);
 
         const ambientLight = new THREE.AmbientLight(0x88bbdd, 0.8);
         scene.add(ambientLight);
 
         // --------------------------------------------------------------
-        // 3. ПОЛ
+        // 3. ПОЛ (увеличен в 9 раз: 80×9 = 720)
         // --------------------------------------------------------------
         const canvas = document.createElement('canvas');
-        canvas.width = 512;
-        canvas.height = 512;
+        canvas.width = 1024;
+        canvas.height = 1024;
         const ctx = canvas.getContext('2d');
         
         ctx.fillStyle = '#4a8c3f';
-        ctx.fillRect(0, 0, 512, 512);
+        ctx.fillRect(0, 0, 1024, 1024);
         
-        for (let i = 0; i < 30000; i++) {
-            const x = Math.random() * 512;
-            const y = Math.random() * 512;
-            const size = 1 + Math.random() * 3;
-            const green = 100 + Math.random() * 80;
-            ctx.fillStyle = `rgb(50, ${green}, 30)`;
+        for (let i = 0; i < 80000; i++) {
+            const x = Math.random() * 1024;
+            const y = Math.random() * 1024;
+            const size = 1 + Math.random() * 4;
+            const green = 80 + Math.random() * 100;
+            ctx.fillStyle = `rgb(30, ${green}, 20)`;
             ctx.fillRect(x, y, size, size);
         }
         
         const texture = new THREE.CanvasTexture(canvas);
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-        texture.repeat.set(30, 30);
+        texture.repeat.set(90, 90); // Больше повторений для большого поля
 
-        const groundGeo = new THREE.PlaneGeometry(80, 80);
+        const groundGeo = new THREE.PlaneGeometry(720, 720);
         const groundMat = new THREE.MeshStandardMaterial({
             map: texture,
-            roughness: 0.8,
+            roughness: 0.9,
             metalness: 0.0,
         });
         const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -605,21 +605,36 @@
         ground.receiveShadow = true;
         scene.add(ground);
 
-        const gridHelper = new THREE.GridHelper(40, 20, 0x88dd88, 0x44aa44);
+        // Увеличенная сетка
+        const gridHelper = new THREE.GridHelper(360, 36, 0x88dd88, 0x44aa44);
         gridHelper.position.y = -0.48;
         scene.add(gridHelper);
 
-        const markerGeo = new THREE.RingGeometry(0.4, 0.6, 32);
+        // Маркер в центре (увеличен)
+        const markerGeo = new THREE.RingGeometry(0.8, 1.2, 32);
         const markerMat = new THREE.MeshBasicMaterial({
             color: 0xff6b35,
             side: THREE.DoubleSide,
             transparent: true,
-            opacity: 0.3,
+            opacity: 0.4,
         });
         const marker = new THREE.Mesh(markerGeo, markerMat);
         marker.rotation.x = -Math.PI / 2;
         marker.position.y = -0.47;
         scene.add(marker);
+
+        // Второй маркер для видимости на большом поле
+        const marker2Geo = new THREE.RingGeometry(2, 2.5, 32);
+        const marker2Mat = new THREE.MeshBasicMaterial({
+            color: 0xff6b35,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.15,
+        });
+        const marker2 = new THREE.Mesh(marker2Geo, marker2Mat);
+        marker2.rotation.x = -Math.PI / 2;
+        marker2.position.y = -0.46;
+        scene.add(marker2);
 
         // --------------------------------------------------------------
         // 4. ПРОМОКОД
@@ -678,9 +693,12 @@
         const FRICTION = 0.98;
         const TANK_MAX_SPEED = 0.23;
 
-        // Параметры камеры для Cibertruck (увеличенные)
-        const CYBERTRUCK_CAMERA_DISTANCE = 8; // вместо 4.5-6.5
-        const CYBERTRUCK_CAMERA_HEIGHT = 4.5; // вместо 3.2
+        // Параметры камеры для Cibertruck
+        const CYBERTRUCK_CAMERA_DISTANCE = 8;
+        const CYBERTRUCK_CAMERA_HEIGHT = 4.5;
+
+        // НОВЫЕ ГРАНИЦЫ ПОЛЯ (в 9 раз больше)
+        const BOUNDARY = 315; // 35 × 9 = 315
 
         const keys = {
             w: false,
@@ -766,7 +784,7 @@
                 file: 'low_poly_tesla_cybertruck.glb', 
                 rotation: 0,
                 isCybertruck: true,
-                scale: 2.0, // Увеличение в 2 раза
+                scale: 2.0,
                 credit: 'Free Standard'
             }
         ];
@@ -787,12 +805,9 @@
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
                         
-                        // Базовый размер для всех машин
                         let targetSize = 2.0;
-                        
-                        // Для Cibertruck увеличиваем целевой размер в 2 раза
                         if (modelInfo.isCybertruck) {
-                            targetSize = 4.0; // В 2 раза больше
+                            targetSize = 4.0;
                         }
                         
                         if (maxDim > 0.01) {
@@ -933,7 +948,7 @@
         });
 
         // --------------------------------------------------------------
-        // 8. ТЮНИНГ
+        // 8. ТЮНИНГ (без изменений)
         // --------------------------------------------------------------
         const tuningPanel = document.getElementById('tuningPanel');
         const tuningToggle = document.getElementById('tuningToggle');
@@ -1201,7 +1216,7 @@
 
             position.add(velocity);
 
-            const BOUNDARY = 35;
+            // НОВЫЕ ГРАНИЦЫ
             if (Math.abs(position.x) > BOUNDARY) {
                 position.x = Math.sign(position.x) * BOUNDARY;
                 velocity.x = 0;
@@ -1233,7 +1248,7 @@
         }
 
         // --------------------------------------------------------------
-        // 11. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА (с настройкой для Cibertruck)
+        // 11. КАМЕРА
         // --------------------------------------------------------------
         const CAMERA_DISTANCE_MIN = 4.5;
         const CAMERA_DISTANCE_MAX = 6.5;
@@ -1252,15 +1267,12 @@
             const speed = carState.velocity.length();
             const distanceFactor = Math.min(speed / MAX_SPEED, 1);
             
-            // Для Cibertruck используем увеличенные параметры камеры
             let currentDistance, currentHeight;
             
             if (isCybertruck) {
-                // Увеличенное расстояние и высота для Cibertruck
                 currentDistance = CYBERTRUCK_CAMERA_DISTANCE;
                 currentHeight = CYBERTRUCK_CAMERA_HEIGHT;
             } else {
-                // Стандартные параметры для остальных машин
                 currentDistance = CAMERA_DISTANCE_MIN + (CAMERA_DISTANCE_MAX - CAMERA_DISTANCE_MIN) * distanceFactor * 0.5;
                 currentHeight = CAMERA_HEIGHT;
             }
@@ -1276,7 +1288,7 @@
             camera.position.lerp(desiredPos, CAMERA_SMOOTH);
 
             const lookTarget = carPos.clone();
-            lookTarget.y += isCybertruck ? 1.0 : 0.5; // Для Cibertruck смотрим выше
+            lookTarget.y += isCybertruck ? 1.0 : 0.5;
             cameraTarget.lerp(lookTarget, CAMERA_SMOOTH);
             camera.lookAt(cameraTarget);
         }
@@ -1304,7 +1316,7 @@
         animate();
 
         console.log('🚗 Симулятор запущен!');
-        console.log('📍 Все машины в центре (0, 0, 0)');
+        console.log('📍 Поле увеличено в 9 раз (720×720), спавн в центре (0, 0, 0)');
         console.log('🚛 Telsa Cibertruck увеличен в 2 раза!');
         console.log('🎖️ TTTank разблокируется по промокоду "thetank"');
         console.log('🎨 Нажмите кнопку "Тюнинг" для изменения цвета и наклейки стикеров!');

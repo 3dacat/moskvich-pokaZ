@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HyperDrive Auto</title>
+    <title>Городской симулятор — Тюнинг</title>
     <style>
         * {
             margin: 0;
@@ -54,6 +54,21 @@
             color: #ff6b35;
             font-weight: 500;
             margin-top: 2px;
+        }
+        #hud .boost-status {
+            font-size: 0.7rem;
+            color: #ffdd44;
+            font-weight: 600;
+            margin-top: 2px;
+            display: none;
+        }
+        #hud .boost-status.active {
+            display: block;
+            animation: pulse 0.8s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
         }
 
         #controls-hint {
@@ -274,6 +289,17 @@
             color: #ff6b35;
             font-size: 0.6rem;
             margin-left: 6px;
+        }
+        .car-btn .boost-badge {
+            display: inline-block;
+            background: #ffdd44;
+            color: #222;
+            font-size: 0.5rem;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 6px;
+            font-weight: 600;
+            vertical-align: middle;
         }
 
         /* ===== ПАНЕЛЬ ТЮНИНГА ===== */
@@ -533,11 +559,16 @@
                 <span class="emoji">🚛</span> Telsa Cibertruck
                 <span class="credit">Free Standard</span>
             </button>
+            <button class="car-btn" data-car="tiramisu">
+                <span class="emoji">🍰</span> Tiramisu SRM
+                <span class="boost-badge">⚡Shift</span>
+                <span class="credit">© CrystalCandySTK · CC BY</span>
+            </button>
         </div>
     </div>
 
     <div id="controls-hint">
-        <strong>W / ↑</strong> — вперёд &nbsp;·&nbsp; <strong>S / ↓</strong> — назад &nbsp;·&nbsp; <strong>A / ←</strong> &nbsp;<strong>D / →</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник
+        <strong>W / ↑</strong> — вперёд &nbsp;·&nbsp; <strong>S / ↓</strong> — назад &nbsp;·&nbsp; <strong>A / ←</strong> &nbsp;<strong>D / →</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; <strong>Shift</strong> — буст (Tiramisu)
     </div>
 
     <!-- Круглая кнопка тюнинга -->
@@ -584,6 +615,7 @@
     <div id="hud">
         <div class="speed"><span id="speedDisplay">0</span> <small>км/ч</small></div>
         <div class="coords" id="coordDisplay">📍 0.00 · 0.00 · 0.00</div>
+        <div class="boost-status" id="boostStatus">⚡ БУСТ АКТИВИРОВАН!</div>
         <div class="model-name" id="modelNameDisplay">🚗 BEEMWA 22</div>
     </div>
 
@@ -747,13 +779,11 @@
         // --------------------------------------------------------------
         const carSelector = document.getElementById('carSelector');
         const carSelectorHeader = document.getElementById('carSelectorHeader');
-        const carList = document.getElementById('carList');
         let isCollapsed = false;
 
         carSelectorHeader.addEventListener('click', () => {
             isCollapsed = !isCollapsed;
             carSelector.classList.toggle('collapsed', isCollapsed);
-            // Обновляем стрелку
             const arrow = carSelectorHeader.querySelector('.arrow');
             arrow.textContent = isCollapsed ? '▶' : '▼';
         });
@@ -778,11 +808,17 @@
 
         const ENGINE_FORCE = 0.025;
         const REVERSE_FORCE = 0.015;
-        const MAX_SPEED = 0.5;
+        const MAX_SPEED = 0.5; // ~75 км/ч
         const TURN_SPEED = 0.03;
         const FRICTION = 0.98;
         const TANK_MAX_SPEED = 0.23;
         const BOUNDARY = 315;
+
+        // Параметры для Tiramisu SRM (буст)
+        const BOOST_MAX_SPEED = 1.0; // ~150 км/ч
+        const BOOST_ENGINE_FORCE = 0.05;
+        let boostActive = false;
+        let isTiramisu = false;
 
         const CYBERTRUCK_CAMERA_DISTANCE = 8;
         const CYBERTRUCK_CAMERA_HEIGHT = 4.5;
@@ -797,6 +833,7 @@
             left: false,
             right: false,
             space: false,
+            shift: false,
         };
 
         const modelsList = [
@@ -807,6 +844,7 @@
                 file: 'bmw2002.glb', 
                 rotation: 0,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -816,6 +854,7 @@
                 file: 'BEEMWAPP3.glb', 
                 rotation: Math.PI,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: '"Low Poly Car - BMW E30 1985 White" (https://skfb.ly/o8EBR) by ROH3D is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -825,6 +864,7 @@
                 file: 'nissan_laurel.glb', 
                 rotation: Math.PI / 2,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -834,6 +874,7 @@
                 file: 'gelik.glb', 
                 rotation: 0,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -843,6 +884,7 @@
                 file: 'toyota_tezzo.glb', 
                 rotation: -Math.PI / 2,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -852,6 +894,7 @@
                 file: 'pagani1.glb', 
                 rotation: 0,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -861,6 +904,7 @@
                 file: 'simbiro.glb', 
                 rotation: 0,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: 'Free Standard'
             },
             { 
@@ -870,6 +914,7 @@
                 file: 'low_poly_tank.glb', 
                 rotation: Math.PI,
                 isCybertruck: false,
+                hasBoost: false,
                 credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
                 isTank: true
             },
@@ -880,8 +925,19 @@
                 file: 'low_poly_tesla_cybertruck.glb', 
                 rotation: 0,
                 isCybertruck: true,
+                hasBoost: false,
                 scale: 2.0,
                 credit: 'Free Standard'
+            },
+            { 
+                id: 'tiramisu', 
+                name: 'Tiramisu SRM', 
+                emoji: '🍰',
+                file: 'crumbelinas_tira-missile_early_look.glb', 
+                rotation: 0,
+                isCybertruck: false,
+                hasBoost: true,
+                credit: '"Crumbelina\'s Tira-Missile (Early look)" (https://skfb.ly/pAR7K) by CrystalCandySTK is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             }
         ];
 
@@ -1035,6 +1091,20 @@
                 document.getElementById('creditText').textContent = modelInfo.credit;
                 document.getElementById('currentCarDisplay').textContent = modelInfo.name;
 
+                // Обновляем состояние буста
+                isTiramisu = modelInfo.hasBoost || false;
+                boostActive = false;
+                document.getElementById('boostStatus').classList.remove('active');
+                document.getElementById('boostStatus').style.display = 'none';
+
+                // Обновляем подсказку
+                const hint = document.getElementById('controls-hint');
+                if (isTiramisu) {
+                    hint.innerHTML = '<strong>W / ↑</strong> — вперёд &nbsp;·&nbsp; <strong>S / ↓</strong> — назад &nbsp;·&nbsp; <strong>A / ←</strong> &nbsp;<strong>D / →</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник &nbsp;·&nbsp; <strong style="color: #ffdd44;">Shift</strong> — БУСТ (75→150 км/ч)';
+                } else {
+                    hint.innerHTML = '<strong>W / ↑</strong> — вперёд &nbsp;·&nbsp; <strong>S / ↓</strong> — назад &nbsp;·&nbsp; <strong>A / ←</strong> &nbsp;<strong>D / →</strong> — руль &nbsp;·&nbsp; <strong>Пробел</strong> — ручник';
+                }
+
                 originalMaterials.clear();
 
                 carState.position.set(0, 0, 0);
@@ -1043,7 +1113,7 @@
                 currentCar.position.set(0, 0, 0);
                 currentCar.rotation.y = modelInfo.rotation || 0;
 
-                // Автоматически сворачиваем окно после выбора
+                // Автоматически сворачиваем окно
                 if (!isCollapsed) {
                     isCollapsed = true;
                     carSelector.classList.add('collapsed');
@@ -1054,7 +1124,48 @@
         });
 
         // --------------------------------------------------------------
-        // 9. ТЮНИНГ
+        // 9. ОБРАБОТКА SHIFT ДЛЯ БУСТА
+        // --------------------------------------------------------------
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Shift') {
+                keys.shift = true;
+                e.preventDefault();
+                
+                if (isTiramisu) {
+                    const currentSpeed = carState.velocity.length() * 150;
+                    if (currentSpeed >= 75) {
+                        boostActive = true;
+                        document.getElementById('boostStatus').style.display = 'block';
+                        document.getElementById('boostStatus').classList.add('active');
+                        document.getElementById('boostStatus').textContent = '⚡ БУСТ АКТИВИРОВАН!';
+                    } else {
+                        // Показываем предупреждение
+                        document.getElementById('boostStatus').style.display = 'block';
+                        document.getElementById('boostStatus').classList.remove('active');
+                        document.getElementById('boostStatus').textContent = '⚠️ Разгонитесь до 75 км/ч для буста!';
+                        setTimeout(() => {
+                            if (!boostActive) {
+                                document.getElementById('boostStatus').style.display = 'none';
+                            }
+                        }, 1500);
+                    }
+                }
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') {
+                keys.shift = false;
+                if (isTiramisu) {
+                    boostActive = false;
+                    document.getElementById('boostStatus').classList.remove('active');
+                    document.getElementById('boostStatus').style.display = 'none';
+                }
+            }
+        });
+
+        // --------------------------------------------------------------
+        // 10. ТЮНИНГ
         // --------------------------------------------------------------
         const tuningPanel = document.getElementById('tuningPanel');
         const tuningToggle = document.getElementById('tuningToggle');
@@ -1135,7 +1246,7 @@
         });
 
         // --------------------------------------------------------------
-        // 10. СТИКЕРЫ
+        // 11. СТИКЕРЫ
         // --------------------------------------------------------------
         function createStickerTexture(text, bgColor = '#ff6b35', textColor = '#ffffff') {
             const canvas = document.createElement('canvas');
@@ -1248,7 +1359,7 @@
         });
 
         // --------------------------------------------------------------
-        // 11. УПРАВЛЕНИЕ
+        // 12. УПРАВЛЕНИЕ (с бустом для Tiramisu)
         // --------------------------------------------------------------
         document.addEventListener('keydown', (e) => {
             const key = e.key;
@@ -1288,12 +1399,22 @@
             const { position, velocity, rotation } = carState;
             const modelInfo = modelsList.find(m => m.id === currentModelId);
             const isTank = modelInfo ? modelInfo.isTank : false;
+            const hasBoost = modelInfo ? modelInfo.hasBoost : false;
 
             let acceleration = 0;
             let turn = 0;
 
+            // Выбор силы двигателя (с бустом или без)
+            let currentEngineForce = ENGINE_FORCE;
+            let currentMaxSpeed = MAX_SPEED;
+
+            if (hasBoost && boostActive) {
+                currentEngineForce = BOOST_ENGINE_FORCE;
+                currentMaxSpeed = BOOST_MAX_SPEED;
+            }
+
             if (keys.w || keys.up) {
-                acceleration = ENGINE_FORCE;
+                acceleration = currentEngineForce;
             }
             if (keys.s || keys.down) {
                 acceleration = -REVERSE_FORCE;
@@ -1309,7 +1430,7 @@
             velocity.add(forward.clone().multiplyScalar(acceleration));
 
             const currentSpeed = velocity.length();
-            const maxSpeed = isTank ? TANK_MAX_SPEED : MAX_SPEED;
+            const maxSpeed = isTank ? TANK_MAX_SPEED : currentMaxSpeed;
             if (currentSpeed > maxSpeed) {
                 velocity.multiplyScalar(maxSpeed / currentSpeed);
             }
@@ -1350,10 +1471,17 @@
 
             document.getElementById('coordDisplay').textContent =
                 `📍 ${position.x.toFixed(2)} · ${position.y.toFixed(2)} · ${position.z.toFixed(2)}`;
+
+            // Автоматическое отключение буста если скорость упала ниже 75
+            if (hasBoost && boostActive && speedKmh < 75) {
+                boostActive = false;
+                document.getElementById('boostStatus').classList.remove('active');
+                document.getElementById('boostStatus').style.display = 'none';
+            }
         }
 
         // --------------------------------------------------------------
-        // 12. КАМЕРА
+        // 13. КАМЕРА
         // --------------------------------------------------------------
         const CAMERA_DISTANCE_MIN = 4.5;
         const CAMERA_DISTANCE_MAX = 6.5;
@@ -1399,7 +1527,7 @@
         }
 
         // --------------------------------------------------------------
-        // 13. АДАПТАЦИЯ ПОД ОКНО
+        // 14. АДАПТАЦИЯ ПОД ОКНО
         // --------------------------------------------------------------
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -1408,7 +1536,7 @@
         });
 
         // --------------------------------------------------------------
-        // 14. АНИМАЦИОННЫЙ ЦИКЛ
+        // 15. АНИМАЦИОННЫЙ ЦИКЛ
         // --------------------------------------------------------------
         function animate() {
             requestAnimationFrame(animate);
@@ -1422,6 +1550,8 @@
 
         console.log('🚗 Симулятор запущен!');
         console.log('📍 Поле увеличено в 9 раз (720×720), спавн в центре (0, 0, 0)');
+        console.log('🍰 Tiramisu SRM добавлена!');
+        console.log('⚡ Для Tiramisu: разгонитесь до 75 км/ч и нажмите Shift для буста до 150 км/ч!');
         console.log('🚛 Telsa Cibertruck увеличен в 2 раза!');
         console.log('🎖️ TTTank разблокируется по промокоду "thetank"');
         console.log('🎨 Нажмите круглую кнопку 🎨 для тюнинга!');

@@ -103,6 +103,62 @@
             opacity: 0.7;
         }
 
+        #promoPanel {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 15;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 16px 24px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            text-align: center;
+            display: none;
+        }
+        #promoPanel input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 200px;
+            margin-right: 10px;
+        }
+        #promoPanel input:focus {
+            outline: none;
+            border-color: #ff6b35;
+        }
+        #promoPanel button {
+            background: #ff6b35;
+            border: none;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s;
+        }
+        #promoPanel button:hover {
+            background: #ff7a4a;
+        }
+        #promoPanel .close-btn {
+            position: absolute;
+            top: 4px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+        #promoPanel .close-btn:hover {
+            color: #fff;
+        }
+
         #carSelector {
             position: absolute;
             top: 80px;
@@ -159,6 +215,11 @@
             padding-left: 4px;
             line-height: 1.3;
         }
+        .car-btn .locked {
+            color: #ff6b35;
+            font-size: 0.6rem;
+            margin-left: 6px;
+        }
 
         #creditPanel {
             position: absolute;
@@ -192,20 +253,31 @@
             .car-btn { font-size: 0.75rem; padding: 6px 10px; }
             .car-btn .credit { font-size: 0.45rem; }
             #creditPanel { bottom: 80px; font-size: 0.5rem; padding: 4px 12px; }
+            #promoPanel { top: 70px; padding: 12px 16px; width: 90%; }
+            #promoPanel input { width: 140px; font-size: 0.85rem; }
         }
     </style>
 </head>
 <body>
 
+    <div id="promoPanel">
+        <button class="close-btn" id="closePromo">✕</button>
+        <h4 style="color: #ff6b35; margin-bottom: 8px;">🎖️ СЕКРЕТНЫЙ ТАНК</h4>
+        <p style="color: #aaa; font-size: 0.8rem; margin-bottom: 10px;">Введите промокод для доступа к TTTank</p>
+        <input type="text" id="promoInput" placeholder="Введите промокод" />
+        <button id="promoBtn">Активировать</button>
+        <p id="promoError" style="color: #ff3355; font-size: 0.7rem; margin-top: 6px; display: none;">Неверный промокод!</p>
+    </div>
+
     <div id="carSelector">
         <h4>🚗 Выбор машины</h4>
-        <button class="car-btn active" data-car="subaru">
-            <span class="emoji">🚙</span> Soobaro Out Black
-            <span class="credit">Thanks to Scigh-on for free model</span>
-        </button>
-        <button class="car-btn" data-car="bmw">
+        <button class="car-btn active" data-car="bmw">
             <span class="emoji">🚗</span> BEEMWA 22
             <span class="credit">© tonielpro520 · CC BY</span>
+        </button>
+        <button class="car-btn" data-car="bmw30">
+            <span class="emoji">🚗</span> BEEMWA 30
+            <span class="credit">© ROH3D · CC BY</span>
         </button>
         <button class="car-btn" data-car="nissan">
             <span class="emoji">🚘</span> Neasun Loral 2rbo
@@ -220,15 +292,16 @@
             <span class="credit">© Daniel Zhabotinsky · CC BY</span>
         </button>
         <button class="car-btn" data-car="pagani">
-            <span class="emoji">🏎️</span> Pagani Sportline
+            <span class="emoji">🏎️</span> Poganka Sport
             <span class="credit">© Ajay Gawde · CC BY</span>
         </button>
-        <button class="car-btn" data-car="hypergolf">
-            <span class="emoji">🚗</span> Hypergolf
+        <button class="car-btn" data-car="simbiro">
+            <span class="emoji">🚗</span> Simbiro Backo
             <span class="credit">Free Standard</span>
         </button>
-        <button class="car-btn" data-car="tank">
+        <button class="car-btn" data-car="tank" id="tankBtn">
             <span class="emoji">🎖️</span> TTTank
+            <span class="locked">🔒</span>
             <span class="credit">© Kolos Studios · CC BY</span>
         </button>
     </div>
@@ -239,13 +312,13 @@
 
     <div id="creditPanel">
         🚗 Модели: 
-        <span id="creditText">Soobaro Out Black — Thanks to Scigh-on for free model</span>
+        <span id="creditText">BEEMWA 22 — © tonielpro520 · CC BY</span>
     </div>
 
     <div id="hud">
         <div class="speed"><span id="speedDisplay">0</span> <small>км/ч</small></div>
         <div class="coords" id="coordDisplay">📍 0.00 · 0.00 · 0.00</div>
-        <div class="model-name" id="modelNameDisplay">🚙 Soobaro Out Black</div>
+        <div class="model-name" id="modelNameDisplay">🚗 BEEMWA 22</div>
     </div>
 
     <div id="loading">
@@ -360,7 +433,41 @@
         scene.add(marker);
 
         // --------------------------------------------------------------
-        // 4. ЗАГРУЗКА МОДЕЛЕЙ
+        // 4. ПРОМОКОД
+        // --------------------------------------------------------------
+        let tankUnlocked = false;
+
+        document.getElementById('promoBtn').addEventListener('click', () => {
+            const input = document.getElementById('promoInput');
+            const error = document.getElementById('promoError');
+            
+            if (input.value.toLowerCase() === 'thetank') {
+                tankUnlocked = true;
+                document.getElementById('promoPanel').style.display = 'none';
+                document.getElementById('tankBtn').innerHTML = 
+                    '<span class="emoji">🎖️</span> TTTank' +
+                    '<span class="credit">© Kolos Studios · CC BY</span>';
+                document.getElementById('tankBtn').dataset.unlocked = 'true';
+                // Активируем кнопку танка
+                document.querySelectorAll('.car-btn').forEach(b => b.style.opacity = '1');
+                alert('🎖️ TTTank разблокирован!');
+            } else {
+                error.style.display = 'block';
+                setTimeout(() => { error.style.display = 'none'; }, 3000);
+            }
+        });
+
+        document.getElementById('closePromo').addEventListener('click', () => {
+            document.getElementById('promoPanel').style.display = 'none';
+        });
+
+        // Показываем промо при загрузке
+        setTimeout(() => {
+            document.getElementById('promoPanel').style.display = 'block';
+        }, 1000);
+
+        // --------------------------------------------------------------
+        // 5. ЗАГРУЗКА МОДЕЛЕЙ
         // --------------------------------------------------------------
         const loader = new GLTFLoader();
         const loadingDiv = document.getElementById('loading');
@@ -368,7 +475,7 @@
 
         let currentCar = null;
         let carLoaded = false;
-        let currentModelId = 'subaru';
+        let currentModelId = 'bmw';
 
         const carState = {
             position: new THREE.Vector3(0, 0, 0),
@@ -376,11 +483,13 @@
             rotation: 0,
         };
 
-        const ENGINE_FORCE = 0.04;
-        const REVERSE_FORCE = 0.025;
+        // МЕДЛЕННЫЙ РАЗГОН
+        const ENGINE_FORCE = 0.025;
+        const REVERSE_FORCE = 0.015;
         const MAX_SPEED = 0.5;
         const TURN_SPEED = 0.03;
         const FRICTION = 0.98;
+        const TANK_MAX_SPEED = 0.23; // ~35 км/ч
 
         const keys = {
             w: false,
@@ -397,68 +506,61 @@
         // Список моделей
         const modelsList = [
             { 
-                id: 'subaru', 
-                name: '🚙 Soobaro Out Black', 
-                file: 'subaru_outback.glb', 
-                rotation: 0,
-                credit: 'Thanks to Scigh-on for free model',
-                maxSpeed: 0.5
-            },
-            { 
                 id: 'bmw', 
                 name: '🚗 BEEMWA 22', 
                 file: 'bmw2002.glb', 
                 rotation: 0,
-                credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
-                maxSpeed: 0.5
+                credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
+            },
+            { 
+                id: 'bmw30', 
+                name: '🚗 BEEMWA 30', 
+                file: 'BEEMWAPP3.glb', 
+                rotation: -Math.PI / 2,
+                credit: '"Low Poly Car - BMW E30 1985 White" (https://skfb.ly/o8EBR) by ROH3D is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
                 id: 'nissan', 
                 name: '🚘 Neasun Loral 2rbo', 
                 file: 'nissan_laurel.glb', 
                 rotation: Math.PI / 2,
-                credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
-                maxSpeed: 0.5
+                credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
                 id: 'mercedes', 
                 name: '🚙 Tantoya Korova', 
                 file: 'gelik.glb', 
                 rotation: 0,
-                credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
-                maxSpeed: 0.5
+                credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
                 id: 'toyota', 
                 name: '🚗 Tantoya Parmezan', 
                 file: 'toyota_tezzo.glb', 
                 rotation: -Math.PI / 2,
-                credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
-                maxSpeed: 0.5
+                credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
                 id: 'pagani', 
-                name: '🏎️ Pagani Sportline', 
+                name: '🏎️ Poganka Sport', 
                 file: 'pagani1.glb', 
                 rotation: 0,
-                credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
-                maxSpeed: 0.5
+                credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
-                id: 'hypergolf', 
-                name: '🚗 Hypergolf', 
-                file: 'Hypergolf.glb', 
+                id: 'simbiro', 
+                name: '🚗 Simbiro Backo', 
+                file: 'simbiro.glb', 
                 rotation: 0,
-                credit: 'Free Standard',
-                maxSpeed: 0.5
+                credit: 'Free Standard'
             },
             { 
                 id: 'tank', 
                 name: '🎖️ TTTank', 
                 file: 'low_poly_tank.glb', 
-                rotation: 0,
+                rotation: -Math.PI / 2,
                 credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
-                maxSpeed: 0.23 // 35 км/ч (0.23 * 150 = 34.5 км/ч)
+                isTank: true
             }
         ];
 
@@ -474,7 +576,6 @@
                     (gltf) => {
                         const model = gltf.scene;
 
-                        // Масштабирование
                         const box = new THREE.Box3().setFromObject(model);
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
@@ -484,20 +585,16 @@
                             model.scale.set(s, s, s);
                         }
 
-                        // Центрирование
                         const center = new THREE.Vector3();
                         box.getCenter(center);
                         model.position.sub(center);
                         
-                        // Опускание на пол (нижняя точка на y = 0)
                         const newBox = new THREE.Box3().setFromObject(model);
                         const minY = newBox.min.y;
                         model.position.y = -minY;
 
-                        // Применяем поворот модели (если задан)
                         model.rotation.y = modelInfo.rotation || 0;
 
-                        // Тени
                         model.traverse((child) => {
                             if (child.isMesh) {
                                 child.castShadow = true;
@@ -526,7 +623,10 @@
 
         async function init() {
             try {
-                for (const model of modelsList) {
+                // Загружаем все модели кроме танка (он загружается отдельно)
+                const modelsToLoad = modelsList.filter(m => m.id !== 'tank');
+                
+                for (const model of modelsToLoad) {
                     try {
                         const modelObj = await loadModel(model.id, model.file);
                         loadedModels[model.id] = modelObj;
@@ -564,11 +664,36 @@
         init();
 
         // --------------------------------------------------------------
-        // 5. ВЫБОР МАШИНЫ
+        // 6. ЗАГРУЗКА ТАНКА ПО ПРОМОКОДУ
+        // --------------------------------------------------------------
+        async function loadTank() {
+            try {
+                const tankInfo = modelsList.find(m => m.id === 'tank');
+                const modelObj = await loadModel('tank', 'low_poly_tank.glb');
+                loadedModels['tank'] = modelObj;
+                modelObj.visible = false;
+                console.log('✅ TTTank загружен и ожидает активации!');
+            } catch (e) {
+                console.warn('❌ Ошибка загрузки танка:', e);
+            }
+        }
+
+        // Загружаем танк в фоне
+        loadTank();
+
+        // --------------------------------------------------------------
+        // 7. ВЫБОР МАШИНЫ
         // --------------------------------------------------------------
         document.querySelectorAll('.car-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const id = btn.dataset.car;
+                
+                // Проверка на танк
+                if (id === 'tank' && !tankUnlocked) {
+                    document.getElementById('promoPanel').style.display = 'block';
+                    return;
+                }
+                
                 if (!loadedModels[id]) return;
 
                 if (currentCar) {
@@ -586,7 +711,6 @@
                 document.getElementById('modelNameDisplay').textContent = modelInfo.name;
                 document.getElementById('creditText').textContent = modelInfo.credit;
 
-                // Сброс позиции в центр
                 carState.position.set(0, 0, 0);
                 carState.velocity.set(0, 0, 0);
                 carState.rotation = 0;
@@ -596,7 +720,7 @@
         });
 
         // --------------------------------------------------------------
-        // 6. УПРАВЛЕНИЕ
+        // 8. УПРАВЛЕНИЕ
         // --------------------------------------------------------------
         document.addEventListener('keydown', (e) => {
             const key = e.key;
@@ -634,11 +758,12 @@
             if (!currentCar || !carLoaded) return;
 
             const { position, velocity, rotation } = carState;
+            const modelInfo = modelsList.find(m => m.id === currentModelId);
+            const isTank = modelInfo ? modelInfo.isTank : false;
 
             let acceleration = 0;
             let turn = 0;
 
-            // Управление для всех машин
             if (keys.w || keys.up) {
                 acceleration = ENGINE_FORCE;
             }
@@ -656,11 +781,8 @@
             velocity.add(forward.clone().multiplyScalar(acceleration));
 
             const currentSpeed = velocity.length();
-            
-            // Получаем максимальную скорость для текущей модели
-            const modelInfo = modelsList.find(m => m.id === currentModelId);
-            const maxSpeed = modelInfo ? modelInfo.maxSpeed : MAX_SPEED;
-            
+            // Ограничение скорости для танка
+            const maxSpeed = isTank ? TANK_MAX_SPEED : MAX_SPEED;
             if (currentSpeed > maxSpeed) {
                 velocity.multiplyScalar(maxSpeed / currentSpeed);
             }
@@ -697,6 +819,7 @@
 
             currentCar.position.y = 0 + Math.sin(Date.now() / 500) * 0.002;
 
+            // Скорость в км/ч (для танка ограничена)
             const speedKmh = Math.round(velocity.length() * 150);
             document.getElementById('speedDisplay').textContent = speedKmh;
 
@@ -705,11 +828,12 @@
         }
 
         // --------------------------------------------------------------
-        // 7. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА
+        // 9. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА (улучшенная)
         // --------------------------------------------------------------
-        const CAMERA_DISTANCE = 5;
-        const CAMERA_HEIGHT = 3;
-        const CAMERA_SMOOTH = 0.1;
+        const CAMERA_DISTANCE_MIN = 4.5;
+        const CAMERA_DISTANCE_MAX = 6.5;
+        const CAMERA_HEIGHT = 3.2;
+        const CAMERA_SMOOTH = 0.08;
 
         let cameraTarget = new THREE.Vector3(0, 0.5, 0);
 
@@ -718,16 +842,22 @@
 
             const carPos = currentCar.position.clone();
             
+            // Динамическое расстояние в зависимости от скорости (но не слишком сильное)
+            const speed = carState.velocity.length();
+            const distanceFactor = Math.min(speed / MAX_SPEED, 1);
+            const currentDistance = CAMERA_DISTANCE_MIN + (CAMERA_DISTANCE_MAX - CAMERA_DISTANCE_MIN) * distanceFactor * 0.5;
+            
             const angle = carState.rotation;
             const offset = new THREE.Vector3(
-                -Math.sin(angle) * CAMERA_DISTANCE,
+                -Math.sin(angle) * currentDistance,
                 CAMERA_HEIGHT,
-                -Math.cos(angle) * CAMERA_DISTANCE
+                -Math.cos(angle) * currentDistance
             );
             
             const desiredPos = carPos.clone().add(offset);
             camera.position.lerp(desiredPos, CAMERA_SMOOTH);
 
+            // Всегда смотрим на машину (она в центре кадра)
             const lookTarget = carPos.clone();
             lookTarget.y += 0.5;
             cameraTarget.lerp(lookTarget, CAMERA_SMOOTH);
@@ -735,7 +865,7 @@
         }
 
         // --------------------------------------------------------------
-        // 8. АДАПТАЦИЯ ПОД ОКНО
+        // 10. АДАПТАЦИЯ ПОД ОКНО
         // --------------------------------------------------------------
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -744,7 +874,7 @@
         });
 
         // --------------------------------------------------------------
-        // 9. АНИМАЦИОННЫЙ ЦИКЛ
+        // 11. АНИМАЦИОННЫЙ ЦИКЛ
         // --------------------------------------------------------------
         function animate() {
             requestAnimationFrame(animate);
@@ -758,7 +888,7 @@
 
         console.log('🚗 Симулятор запущен!');
         console.log('📍 Все машины в центре (0, 0, 0)');
-        console.log('🎖️ TTTank — дулом вперёд, макс. скорость 35 км/ч!');
+        console.log('🎖️ TTTank разблокируется по промокоду "thetank"');
         console.log('📖 Управление: W/↑-вперёд, S/↓-назад, A/←-влево, D/→-вправо, Пробел-ручник');
         console.log('🚗 8 машин с лицензиями');
     </script>

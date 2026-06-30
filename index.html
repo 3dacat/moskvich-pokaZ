@@ -678,6 +678,10 @@
         const FRICTION = 0.98;
         const TANK_MAX_SPEED = 0.23;
 
+        // Параметры камеры для Cibertruck (увеличенные)
+        const CYBERTRUCK_CAMERA_DISTANCE = 8; // вместо 4.5-6.5
+        const CYBERTRUCK_CAMERA_HEIGHT = 4.5; // вместо 3.2
+
         const keys = {
             w: false,
             s: false,
@@ -696,6 +700,7 @@
                 name: '🚗 BEEMWA 22', 
                 file: 'bmw2002.glb', 
                 rotation: 0,
+                isCybertruck: false,
                 credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -703,6 +708,7 @@
                 name: '🚗 BEEMWA 30', 
                 file: 'BEEMWAPP3.glb', 
                 rotation: Math.PI,
+                isCybertruck: false,
                 credit: '"Low Poly Car - BMW E30 1985 White" (https://skfb.ly/o8EBR) by ROH3D is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -710,6 +716,7 @@
                 name: '🚘 Neasun Loral 2rbo', 
                 file: 'nissan_laurel.glb', 
                 rotation: Math.PI / 2,
+                isCybertruck: false,
                 credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -717,6 +724,7 @@
                 name: '🚙 Tantoya Korova', 
                 file: 'gelik.glb', 
                 rotation: 0,
+                isCybertruck: false,
                 credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -724,6 +732,7 @@
                 name: '🚗 Tantoya Parmezan', 
                 file: 'toyota_tezzo.glb', 
                 rotation: -Math.PI / 2,
+                isCybertruck: false,
                 credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -731,6 +740,7 @@
                 name: '🏎️ Poganka Sport', 
                 file: 'pagani1.glb', 
                 rotation: 0,
+                isCybertruck: false,
                 credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)'
             },
             { 
@@ -738,6 +748,7 @@
                 name: '🚗 Simbiro Backo', 
                 file: 'simbiro.glb', 
                 rotation: 0,
+                isCybertruck: false,
                 credit: 'Free Standard'
             },
             { 
@@ -745,6 +756,7 @@
                 name: '🎖️ TTTank', 
                 file: 'low_poly_tank.glb', 
                 rotation: Math.PI,
+                isCybertruck: false,
                 credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
                 isTank: true
             },
@@ -753,6 +765,8 @@
                 name: '🚛 Telsa Cibertruck', 
                 file: 'low_poly_tesla_cybertruck.glb', 
                 rotation: 0,
+                isCybertruck: true,
+                scale: 2.0, // Увеличение в 2 раза
                 credit: 'Free Standard'
             }
         ];
@@ -772,7 +786,15 @@
                         const box = new THREE.Box3().setFromObject(model);
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
-                        const targetSize = 2.0;
+                        
+                        // Базовый размер для всех машин
+                        let targetSize = 2.0;
+                        
+                        // Для Cibertruck увеличиваем целевой размер в 2 раза
+                        if (modelInfo.isCybertruck) {
+                            targetSize = 4.0; // В 2 раза больше
+                        }
+                        
                         if (maxDim > 0.01) {
                             const s = targetSize / maxDim;
                             model.scale.set(s, s, s);
@@ -1211,7 +1233,7 @@
         }
 
         // --------------------------------------------------------------
-        // 11. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА
+        // 11. КАМЕРА ОТ ТРЕТЬЕГО ЛИЦА (с настройкой для Cibertruck)
         // --------------------------------------------------------------
         const CAMERA_DISTANCE_MIN = 4.5;
         const CAMERA_DISTANCE_MAX = 6.5;
@@ -1224,15 +1246,29 @@
             if (!currentCar || !carLoaded) return;
 
             const carPos = currentCar.position.clone();
+            const modelInfo = modelsList.find(m => m.id === currentModelId);
+            const isCybertruck = modelInfo ? modelInfo.isCybertruck : false;
             
             const speed = carState.velocity.length();
             const distanceFactor = Math.min(speed / MAX_SPEED, 1);
-            const currentDistance = CAMERA_DISTANCE_MIN + (CAMERA_DISTANCE_MAX - CAMERA_DISTANCE_MIN) * distanceFactor * 0.5;
+            
+            // Для Cibertruck используем увеличенные параметры камеры
+            let currentDistance, currentHeight;
+            
+            if (isCybertruck) {
+                // Увеличенное расстояние и высота для Cibertruck
+                currentDistance = CYBERTRUCK_CAMERA_DISTANCE;
+                currentHeight = CYBERTRUCK_CAMERA_HEIGHT;
+            } else {
+                // Стандартные параметры для остальных машин
+                currentDistance = CAMERA_DISTANCE_MIN + (CAMERA_DISTANCE_MAX - CAMERA_DISTANCE_MIN) * distanceFactor * 0.5;
+                currentHeight = CAMERA_HEIGHT;
+            }
             
             const angle = carState.rotation;
             const offset = new THREE.Vector3(
                 -Math.sin(angle) * currentDistance,
-                CAMERA_HEIGHT,
+                currentHeight,
                 -Math.cos(angle) * currentDistance
             );
             
@@ -1240,7 +1276,7 @@
             camera.position.lerp(desiredPos, CAMERA_SMOOTH);
 
             const lookTarget = carPos.clone();
-            lookTarget.y += 0.5;
+            lookTarget.y += isCybertruck ? 1.0 : 0.5; // Для Cibertruck смотрим выше
             cameraTarget.lerp(lookTarget, CAMERA_SMOOTH);
             camera.lookAt(cameraTarget);
         }
@@ -1269,7 +1305,7 @@
 
         console.log('🚗 Симулятор запущен!');
         console.log('📍 Все машины в центре (0, 0, 0)');
-        console.log('🚛 Telsa Cibertruck добавлен!');
+        console.log('🚛 Telsa Cibertruck увеличен в 2 раза!');
         console.log('🎖️ TTTank разблокируется по промокоду "thetank"');
         console.log('🎨 Нажмите кнопку "Тюнинг" для изменения цвета и наклейки стикеров!');
         console.log('📖 Управление: W/↑-вперёд, S/↓-назад, A/←-влево, D/→-вправо, Пробел-ручник');

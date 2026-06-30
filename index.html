@@ -453,6 +453,10 @@
             <span class="locked">🔒</span>
             <span class="credit">© Kolos Studios · CC BY</span>
         </button>
+        <button class="car-btn" data-car="cybertruck">
+            <span class="emoji">🚛</span> Telsa Cibertruck
+            <span class="credit">Free Standard</span>
+        </button>
     </div>
 
     <div id="controls-hint">
@@ -659,7 +663,7 @@
         let currentCar = null;
         let carLoaded = false;
         let currentModelId = 'bmw';
-        let originalMaterials = new Map(); // Для сброса цвета
+        let originalMaterials = new Map();
 
         const carState = {
             position: new THREE.Vector3(0, 0, 0),
@@ -743,6 +747,13 @@
                 rotation: Math.PI,
                 credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
                 isTank: true
+            },
+            { 
+                id: 'cybertruck', 
+                name: '🚛 Telsa Cibertruck', 
+                file: 'low_poly_tesla_cybertruck.glb', 
+                rotation: 0,
+                credit: 'Free Standard'
             }
         ];
 
@@ -889,7 +900,6 @@
                 document.getElementById('modelNameDisplay').textContent = modelInfo.name;
                 document.getElementById('creditText').textContent = modelInfo.credit;
 
-                // Сбрасываем тюнинг при смене машины
                 originalMaterials.clear();
 
                 carState.position.set(0, 0, 0);
@@ -918,7 +928,6 @@
             tuningPanel.style.display = 'none';
         });
 
-        // Сохраняем оригинальные материалы
         function saveOriginalMaterials(model) {
             if (!model) return;
             model.traverse((child) => {
@@ -931,19 +940,16 @@
             });
         }
 
-        // Применение цвета
         applyColorBtn.addEventListener('click', () => {
             if (!currentCar) return;
             const color = new THREE.Color(colorPicker.value);
             
             currentCar.traverse((child) => {
                 if (child.isMesh && child.material) {
-                    // Сохраняем оригинал, если ещё не сохранён
                     const key = child.uuid;
                     if (!originalMaterials.has(key)) {
                         originalMaterials.set(key, child.material.clone());
                     }
-                    // Применяем цвет
                     const mat = child.material;
                     if (Array.isArray(mat)) {
                         mat.forEach(m => {
@@ -958,7 +964,6 @@
             });
         });
 
-        // Сброс цвета
         resetColorBtn.addEventListener('click', () => {
             if (!currentCar) return;
             currentCar.traverse((child) => {
@@ -989,25 +994,19 @@
         // --------------------------------------------------------------
         // 9. СТИКЕРЫ
         // --------------------------------------------------------------
-        const stickerTextures = {};
-
-        // Создаём текстуру со стикером
         function createStickerTexture(text, bgColor = '#ff6b35', textColor = '#ffffff') {
             const canvas = document.createElement('canvas');
             canvas.width = 256;
             canvas.height = 256;
             const ctx = canvas.getContext('2d');
             
-            // Фон
             ctx.fillStyle = bgColor;
             ctx.fillRect(0, 0, 256, 256);
             
-            // Рамка
             ctx.strokeStyle = textColor;
             ctx.lineWidth = 4;
             ctx.strokeRect(10, 10, 236, 236);
             
-            // Текст
             ctx.fillStyle = textColor;
             ctx.font = 'bold 80px Arial';
             ctx.textAlign = 'center';
@@ -1017,7 +1016,6 @@
             return new THREE.CanvasTexture(canvas);
         }
 
-        // Стикеры
         const stickerPresets = {
             '🔥': { bg: '#ff4400', text: '🔥' },
             '⭐': { bg: '#ffd700', text: '⭐' },
@@ -1026,12 +1024,10 @@
             '🌈': { bg: '#ff6b6b', text: '🌈' },
         };
 
-        // Применить стикер
         function applySticker(text) {
             if (!currentCar) return;
             
             if (text === 'clear') {
-                // Убираем стикер
                 resetColorBtn.click();
                 return;
             }
@@ -1061,7 +1057,6 @@
             });
         }
 
-        // Обработчики кнопок стикеров
         document.querySelectorAll('.sticker-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const sticker = btn.dataset.sticker;
@@ -1074,7 +1069,6 @@
             });
         });
 
-        // Загрузка своего изображения
         document.getElementById('stickerFileInput').addEventListener('change', (e) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -1275,6 +1269,7 @@
 
         console.log('🚗 Симулятор запущен!');
         console.log('📍 Все машины в центре (0, 0, 0)');
+        console.log('🚛 Telsa Cibertruck добавлен!');
         console.log('🎖️ TTTank разблокируется по промокоду "thetank"');
         console.log('🎨 Нажмите кнопку "Тюнинг" для изменения цвета и наклейки стикеров!');
         console.log('📖 Управление: W/↑-вперёд, S/↓-назад, A/←-влево, D/→-вправо, Пробел-ручник');

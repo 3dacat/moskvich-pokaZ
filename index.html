@@ -601,8 +601,8 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         // --- Константы ---
-        const BOUNDARY = 63;
-        const GROUND_SIZE = 144;
+        const BOUNDARY = 63; // Новая граница для уменьшенного города (315 / 5)
+        const GROUND_SIZE = 144; // 720 / 5
 
         // --------------------------------------------------------------
         // 1. СЦЕНА, КАМЕРА, РЕНДЕРЕР
@@ -623,7 +623,7 @@
         document.body.appendChild(renderer.domElement);
 
         // --------------------------------------------------------------
-        // 2. ОСВЕЩЕНИЕ
+        // 2. ОСВЕЩЕНИЕ (адаптировано под уменьшенный город)
         // --------------------------------------------------------------
         const sunLight = new THREE.DirectionalLight(0xffeedd, 2.5);
         sunLight.position.set(20, 30, 16);
@@ -646,7 +646,7 @@
         scene.add(ambientLight);
 
         // --------------------------------------------------------------
-        // 3. ПОЛ-ПОДЛОЖКА
+        // 3. ПОЛ-ПОДЛОЖКА (уменьшенная)
         // --------------------------------------------------------------
         const groundMat = new THREE.ShadowMaterial({ opacity: 0.4 });
         const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
@@ -657,7 +657,7 @@
         scene.add(ground);
 
         // --------------------------------------------------------------
-        // 4. ЗАГРУЗКА ГОРОДСКОЙ КАРТЫ
+        // 4. ЗАГРУЗКА ГОРОДСКОЙ КАРТЫ (уменьшенной в 5 раз)
         // --------------------------------------------------------------
         const cityLoader = new GLTFLoader();
         let cityModel = null;
@@ -670,32 +670,47 @@
                     (gltf) => {
                         const model = gltf.scene;
                         
+                        // --- Уменьшаем город в 5 раз ---
                         const scaleFactor = 1 / 5;
                         model.scale.set(scaleFactor, scaleFactor, scaleFactor);
                         
+                        // --- Центрируем модель ---
                         const box = new THREE.Box3().setFromObject(model);
                         const center = new THREE.Vector3();
                         box.getCenter(center);
                         model.position.sub(center);
                         
+                        // Опускаем на уровень земли
                         const minY = box.min.y * scaleFactor;
                         model.position.y = -minY;
                         
+                        // Добавляем модель на сцену
                         scene.add(model);
                         cityModel = model;
                         
-                        const thresholdY = 0.1;
+                        // --- Создаём коллизию для элементов выше уровня поля ---
+                        const thresholdY = 0.1; // Небольшой порог, чтобы игнорировать землю
                         model.traverse((child) => {
                             if (child.isMesh) {
+                                // Проверяем, находится ли меш выше уровня поля
+                                const worldPos = new THREE.Vector3();
+                                child.getWorldPosition(worldPos);
+                                
+                                // Получаем bounding box меша в мировых координатах
                                 const box = new THREE.Box3().setFromObject(child);
                                 const minYWorld = box.min.y;
+                                
+                                // Если меш выше порога — добавляем в коллизию
                                 if (minYWorld > thresholdY) {
                                     collisionMeshes.push(child);
+                                    // Для визуализации можно сделать меши непрозрачными (опционально)
+                                    // child.material.transparent = true;
+                                    // child.material.opacity = 0.5;
                                 }
                             }
                         });
                         
-                        console.log(`🏙️ Город загружен. Коллизий: ${collisionMeshes.length}`);
+                        console.log(`🏙️ Город загружен и уменьшен в 5 раз. Коллизий: ${collisionMeshes.length}`);
                         resolve(model);
                     },
                     (xhr) => {
@@ -714,18 +729,23 @@
         // 5. ФУНКЦИЯ ПРОВЕРКИ КОЛЛИЗИИ
         // --------------------------------------------------------------
         function checkCollision(position) {
+            // Создаём сферу вокруг машины для проверки столкновений
             const sphere = new THREE.Sphere(position, 0.6);
+            
             for (const mesh of collisionMeshes) {
+                // Получаем bounding box меша в мировых координатах
                 const box = new THREE.Box3().setFromObject(mesh);
+                
+                // Проверяем пересечение сферы с боксом
                 if (sphere.intersectsBox(box)) {
-                    return true;
+                    return true; // Столкновение!
                 }
             }
             return false;
         }
 
         // --------------------------------------------------------------
-        // 6. ЗАГРУЗКА МОДЕЛЕЙ МАШИН (С УВЕЛИЧЕНИЕМ В 3 РАЗА)
+        // 6. ЗАГРУЗКА МОДЕЛЕЙ МАШИН
         // --------------------------------------------------------------
         const loader = new GLTFLoader();
         const loadingDiv = document.getElementById('loading');
@@ -742,7 +762,7 @@
             rotation: 0,
         };
 
-        // === НАСТРОЙКИ ДВИЖЕНИЯ ===
+        // === НАСТРОЙКИ ДВИЖЕНИЯ (адаптированы под меньший город) ===
         const ENGINE_FORCE = 0.02;
         const REVERSE_FORCE = 0.01;
         const MAX_SPEED = 0.5;
@@ -765,7 +785,7 @@
             space: false,
         };
 
-        // === СПИСОК МОДЕЛЕЙ ===
+        // === СПИСОК МОДЕЛЕЙ (9 машин) ===
         const modelsList = [
             { 
                 id: 'bmw', 
@@ -877,10 +897,9 @@
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
                         
-                        // --- УВЕЛИЧЕНИЕ В 3 РАЗА ---
-                        let targetSize = 6.0; // Было 2.0, теперь 6.0 (в 3 раза больше)
+                        let targetSize = 2.0;
                         if (modelInfo.isCybertruck) {
-                            targetSize = 12.0; // Для Cybertruck тоже увеличиваем
+                            targetSize = 4.0;
                         }
                         
                         if (maxDim > 0.01) {
@@ -929,8 +948,10 @@
         // --------------------------------------------------------------
         async function init() {
             try {
+                // 1. Загружаем город
                 await loadCity();
                 
+                // 2. Загружаем все машины (кроме locked)
                 const modelsToLoad = modelsList.filter(m => !m.locked);
                 for (const model of modelsToLoad) {
                     try {
@@ -939,24 +960,26 @@
                         if (model.id !== modelsList[0].id) {
                             modelObj.visible = false;
                         }
-                        console.log(`✅ ${model.emoji} ${model.name} загружен (увеличен в 3 раза)`);
+                        console.log(`✅ ${model.emoji} ${model.name} загружен`);
                     } catch (e) {
                         console.warn(`❌ Ошибка загрузки ${model.name}:`, e);
                     }
                 }
 
+                // 3. Загружаем locked модели в фоне
                 const lockedModels = modelsList.filter(m => m.locked);
                 for (const model of lockedModels) {
                     try {
                         const modelObj = await loadModel(model.id, model.file);
                         loadedModels[model.id] = modelObj;
                         modelObj.visible = false;
-                        console.log(`✅ ${model.emoji} ${model.name} загружен в фоне (увеличен в 3 раза)`);
+                        console.log(`✅ ${model.emoji} ${model.name} загружен в фоне (заблокирован)`);
                     } catch (e) {
                         console.warn(`❌ Ошибка загрузки ${model.name}:`, e);
                     }
                 }
 
+                // 4. Устанавливаем первую машину
                 const firstModel = modelsList[0];
                 if (loadedModels[firstModel.id]) {
                     currentCar = loadedModels[firstModel.id];
@@ -966,7 +989,10 @@
                     document.getElementById('creditText').textContent = firstModel.credit;
                 }
 
+                // 5. Убираем индикатор загрузки
                 loadingDiv.style.display = 'none';
+                
+                // 6. Рендерим список машин в меню
                 renderCarList();
                 
                 console.log('✅ Все модели и город загружены!');
@@ -984,10 +1010,11 @@
         init();
 
         // --------------------------------------------------------------
-        // 8. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (меню, промокоды, гараж, управление)
+        // 8. ОСТАЛЬНЫЕ ФУНКЦИИ (меню, промокоды, гараж, управление)
         // --- (код сохранён из предыдущей версии) ---
         // --------------------------------------------------------------
 
+        // --- Рендер списка машин ---
         function renderCarList() {
             const container = document.getElementById('carList');
             container.innerHTML = '';
@@ -1358,6 +1385,7 @@
             let acceleration = 0;
             let turn = 0;
 
+            // W — назад, S — вперёд
             if (keys.w || keys.up) {
                 acceleration = -ENGINE_FORCE;
             }
@@ -1373,42 +1401,53 @@
 
             const forward = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
             
+            // Сохраняем старую позицию для отката при коллизии
             const oldPosition = position.clone();
+            
+            // Пробуем двигаться
             const newVelocity = velocity.clone().add(forward.clone().multiplyScalar(acceleration));
             const newPosition = position.clone().add(newVelocity);
 
+            // Проверяем коллизию в новой позиции
             if (!checkCollision(newPosition)) {
+                // Если коллизии нет — применяем движение
                 velocity.copy(newVelocity);
                 position.copy(newPosition);
             } else {
+                // Если коллизия есть — пробуем двигаться только по X
                 const testX = new THREE.Vector3(newPosition.x, newPosition.y, oldPosition.z);
                 if (!checkCollision(testX)) {
                     velocity.x = newVelocity.x;
                     velocity.z = 0;
                     position.x = newPosition.x;
                 }
+                // Пробуем двигаться только по Z
                 const testZ = new THREE.Vector3(oldPosition.x, newPosition.y, newPosition.z);
                 if (!checkCollision(testZ)) {
                     velocity.z = newVelocity.z;
                     velocity.x = 0;
                     position.z = newPosition.z;
                 }
+                // Если ничего не работает — останавливаемся
                 if (checkCollision(position)) {
                     velocity.set(0, 0, 0);
                 }
             }
 
+            // Ограничиваем скорость
             const currentSpeed = velocity.length();
             const maxSpeed = isTank ? TANK_MAX_SPEED : MAX_SPEED;
             if (currentSpeed > maxSpeed) {
                 velocity.multiplyScalar(maxSpeed / currentSpeed);
             }
 
+            // Трение
             velocity.multiplyScalar(FRICTION);
             if (velocity.length() < 0.001) {
                 velocity.set(0, 0, 0);
             }
 
+            // Границы поля
             if (Math.abs(position.x) > BOUNDARY) {
                 position.x = Math.sign(position.x) * BOUNDARY;
                 velocity.x = 0;
@@ -1439,7 +1478,7 @@
                 `📍 ${position.x.toFixed(2)} · ${position.y.toFixed(2)} · ${position.z.toFixed(2)}`;
         }
 
-        // --- Камера (ракурс сохранён) ---
+        // --- Камера ---
         const CAMERA_DISTANCE_MIN = 4.5;
         const CAMERA_DISTANCE_MAX = 6.5;
         const CAMERA_HEIGHT = 3.2;
@@ -1499,9 +1538,8 @@
         }
         animate();
 
-        console.log('🚗 Симулятор с увеличенными машинами запущен!');
+        console.log('🚗 Симулятор с уменьшенным городом запущен!');
         console.log('🏙️ Город "Tiny City" (https://skfb.ly/6xOOr) by Matheus Dalla (CC BY)');
-        console.log('🚗 Все машины увеличены в 3 раза!');
         console.log(`📍 Размер города: ${GROUND_SIZE}×${GROUND_SIZE}, спавн в центре (0, 0, 0)`);
         console.log(`🚧 Коллизий создано: ${collisionMeshes.length}`);
         console.log('🔑 Промокоды: "танк" — TTTank, "мила" — Tiramisu SRM');

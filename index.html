@@ -601,8 +601,8 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         // --- Константы ---
-        const BOUNDARY = 315; // Граница игрового поля (720 / 2 - небольшой отступ)
-        const GROUND_SIZE = 720; // Размер поля
+        const BOUNDARY = 63;
+        const GROUND_SIZE = 144;
 
         // --------------------------------------------------------------
         // 1. СЦЕНА, КАМЕРА, РЕНДЕРЕР
@@ -623,15 +623,15 @@
         document.body.appendChild(renderer.domElement);
 
         // --------------------------------------------------------------
-        // 2. ОСВЕЩЕНИЕ (адаптировано под город)
+        // 2. ОСВЕЩЕНИЕ
         // --------------------------------------------------------------
         const sunLight = new THREE.DirectionalLight(0xffeedd, 2.5);
-        sunLight.position.set(100, 150, 80);
+        sunLight.position.set(20, 30, 16);
         sunLight.castShadow = true;
         sunLight.shadow.mapSize.width = 4096;
         sunLight.shadow.mapSize.height = 4096;
         sunLight.shadow.camera.near = 0.1;
-        sunLight.shadow.camera.far = 500;
+        sunLight.shadow.camera.far = 100;
         sunLight.shadow.camera.left = -GROUND_SIZE / 2;
         sunLight.shadow.camera.right = GROUND_SIZE / 2;
         sunLight.shadow.camera.top = GROUND_SIZE / 2;
@@ -639,14 +639,14 @@
         scene.add(sunLight);
 
         const fillLight = new THREE.DirectionalLight(0x88ccff, 0.8);
-        fillLight.position.set(-50, 30, -80);
+        fillLight.position.set(-10, 6, -16);
         scene.add(fillLight);
 
         const ambientLight = new THREE.AmbientLight(0x88bbdd, 0.8);
         scene.add(ambientLight);
 
         // --------------------------------------------------------------
-        // 3. ПОЛ-ПОДЛОЖКА (для теней и чтобы скрыть пустоты)
+        // 3. ПОЛ-ПОДЛОЖКА
         // --------------------------------------------------------------
         const groundMat = new THREE.ShadowMaterial({ opacity: 0.4 });
         const groundGeo = new THREE.PlaneGeometry(GROUND_SIZE, GROUND_SIZE);
@@ -661,6 +661,7 @@
         // --------------------------------------------------------------
         const cityLoader = new GLTFLoader();
         let cityModel = null;
+        let collisionMeshes = [];
 
         function loadCity() {
             return new Promise((resolve, reject) => {
@@ -669,40 +670,32 @@
                     (gltf) => {
                         const model = gltf.scene;
                         
-                        // --- Растягиваем модель на всё поле ---
-                        // 1. Вычисляем текущие размеры модели
-                        const box = new THREE.Box3().setFromObject(model);
-                        const size = box.getSize(new THREE.Vector3());
-                        const maxDim = Math.max(size.x, size.z); // Игнорируем высоту для масштабирования
-                        
-                        // 2. Целевой размер — чуть меньше поля, чтобы не вылезать за границы
-                        const targetSize = GROUND_SIZE * 0.95; 
-                        const scaleFactor = targetSize / maxDim;
-                        
-                        // 3. Масштабируем модель
+                        const scaleFactor = 1 / 5;
                         model.scale.set(scaleFactor, scaleFactor, scaleFactor);
                         
-                        // 4. Центрируем модель на поле (по X и Z)
+                        const box = new THREE.Box3().setFromObject(model);
                         const center = new THREE.Vector3();
                         box.getCenter(center);
-                        // После масштабирования центр сместится, пересчитываем
-                        const newBox = new THREE.Box3().setFromObject(model);
-                        const newCenter = new THREE.Vector3();
-                        newBox.getCenter(newCenter);
+                        model.position.sub(center);
                         
-                        // Смещаем модель так, чтобы её центр оказался в (0, 0, 0) на уровне земли
-                        model.position.sub(newCenter);
+                        const minY = box.min.y * scaleFactor;
+                        model.position.y = -minY;
                         
-                        // 5. Опускаем модель на уровень земли (если нужно)
-                        // Для этого найдём самую нижнюю точку модели
-                        const minY = newBox.min.y;
-                        model.position.y = -minY; // Ставим нижнюю точку на y=0
-                        
-                        // Добавляем модель на сцену
                         scene.add(model);
                         cityModel = model;
                         
-                        console.log('🏙️ Город загружен и растянут на поле!');
+                        const thresholdY = 0.1;
+                        model.traverse((child) => {
+                            if (child.isMesh) {
+                                const box = new THREE.Box3().setFromObject(child);
+                                const minYWorld = box.min.y;
+                                if (minYWorld > thresholdY) {
+                                    collisionMeshes.push(child);
+                                }
+                            }
+                        });
+                        
+                        console.log(`🏙️ Город загружен. Коллизий: ${collisionMeshes.length}`);
                         resolve(model);
                     },
                     (xhr) => {
@@ -718,7 +711,21 @@
         }
 
         // --------------------------------------------------------------
-        // 5. ЗАГРУЗКА МОДЕЛЕЙ МАШИН (как в предыдущей версии)
+        // 5. ФУНКЦИЯ ПРОВЕРКИ КОЛЛИЗИИ
+        // --------------------------------------------------------------
+        function checkCollision(position) {
+            const sphere = new THREE.Sphere(position, 0.6);
+            for (const mesh of collisionMeshes) {
+                const box = new THREE.Box3().setFromObject(mesh);
+                if (sphere.intersectsBox(box)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // --------------------------------------------------------------
+        // 6. ЗАГРУЗКА МОДЕЛЕЙ МАШИН (С УВЕЛИЧЕНИЕМ В 3 РАЗА)
         // --------------------------------------------------------------
         const loader = new GLTFLoader();
         const loadingDiv = document.getElementById('loading');
@@ -758,7 +765,7 @@
             space: false,
         };
 
-        // === СПИСОК МОДЕЛЕЙ (9 машин) ===
+        // === СПИСОК МОДЕЛЕЙ ===
         const modelsList = [
             { 
                 id: 'bmw', 
@@ -870,9 +877,10 @@
                         const size = box.getSize(new THREE.Vector3());
                         const maxDim = Math.max(size.x, size.y, size.z);
                         
-                        let targetSize = 2.0;
+                        // --- УВЕЛИЧЕНИЕ В 3 РАЗА ---
+                        let targetSize = 6.0; // Было 2.0, теперь 6.0 (в 3 раза больше)
                         if (modelInfo.isCybertruck) {
-                            targetSize = 4.0;
+                            targetSize = 12.0; // Для Cybertruck тоже увеличиваем
                         }
                         
                         if (maxDim > 0.01) {
@@ -917,14 +925,12 @@
         }
 
         // --------------------------------------------------------------
-        // 6. ИНИЦИАЛИЗАЦИЯ
+        // 7. ИНИЦИАЛИЗАЦИЯ
         // --------------------------------------------------------------
         async function init() {
             try {
-                // 1. Загружаем город
                 await loadCity();
                 
-                // 2. Загружаем все машины (кроме locked)
                 const modelsToLoad = modelsList.filter(m => !m.locked);
                 for (const model of modelsToLoad) {
                     try {
@@ -933,26 +939,24 @@
                         if (model.id !== modelsList[0].id) {
                             modelObj.visible = false;
                         }
-                        console.log(`✅ ${model.emoji} ${model.name} загружен`);
+                        console.log(`✅ ${model.emoji} ${model.name} загружен (увеличен в 3 раза)`);
                     } catch (e) {
                         console.warn(`❌ Ошибка загрузки ${model.name}:`, e);
                     }
                 }
 
-                // 3. Загружаем locked модели в фоне
                 const lockedModels = modelsList.filter(m => m.locked);
                 for (const model of lockedModels) {
                     try {
                         const modelObj = await loadModel(model.id, model.file);
                         loadedModels[model.id] = modelObj;
                         modelObj.visible = false;
-                        console.log(`✅ ${model.emoji} ${model.name} загружен в фоне (заблокирован)`);
+                        console.log(`✅ ${model.emoji} ${model.name} загружен в фоне (увеличен в 3 раза)`);
                     } catch (e) {
                         console.warn(`❌ Ошибка загрузки ${model.name}:`, e);
                     }
                 }
 
-                // 4. Устанавливаем первую машину
                 const firstModel = modelsList[0];
                 if (loadedModels[firstModel.id]) {
                     currentCar = loadedModels[firstModel.id];
@@ -962,10 +966,7 @@
                     document.getElementById('creditText').textContent = firstModel.credit;
                 }
 
-                // 5. Убираем индикатор загрузки
                 loadingDiv.style.display = 'none';
-                
-                // 6. Рендерим список машин в меню
                 renderCarList();
                 
                 console.log('✅ Все модели и город загружены!');
@@ -983,32 +984,10 @@
         init();
 
         // --------------------------------------------------------------
-        // 7. ОСТАЛЬНЫЕ ФУНКЦИИ (меню, промокоды, гараж, управление)
-        // --- (код полностью сохранён из предыдущей версии) ---
+        // 8. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (меню, промокоды, гараж, управление)
+        // --- (код сохранён из предыдущей версии) ---
         // --------------------------------------------------------------
 
-        // ... (остальной код без изменений) ...
-
-        // --------------------------------------------------------------
-        // 8. ЗАПУСК АНИМАЦИИ
-        // --------------------------------------------------------------
-        function animate() {
-            requestAnimationFrame(animate);
-
-            // Обновление физики и камеры
-            updateCar();
-            updateCamera();
-
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        // --------------------------------------------------------------
-        // 9. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (меню, промокоды, гараж, управление)
-        // --- (код полностью сохранён из предыдущей версии) ---
-        // --------------------------------------------------------------
-        
-        // --- Рендер списка машин ---
         function renderCarList() {
             const container = document.getElementById('carList');
             container.innerHTML = '';
@@ -1379,7 +1358,6 @@
             let acceleration = 0;
             let turn = 0;
 
-            // W — назад, S — вперёд
             if (keys.w || keys.up) {
                 acceleration = -ENGINE_FORCE;
             }
@@ -1394,7 +1372,31 @@
             }
 
             const forward = new THREE.Vector3(-Math.sin(rotation), 0, -Math.cos(rotation));
-            velocity.add(forward.clone().multiplyScalar(acceleration));
+            
+            const oldPosition = position.clone();
+            const newVelocity = velocity.clone().add(forward.clone().multiplyScalar(acceleration));
+            const newPosition = position.clone().add(newVelocity);
+
+            if (!checkCollision(newPosition)) {
+                velocity.copy(newVelocity);
+                position.copy(newPosition);
+            } else {
+                const testX = new THREE.Vector3(newPosition.x, newPosition.y, oldPosition.z);
+                if (!checkCollision(testX)) {
+                    velocity.x = newVelocity.x;
+                    velocity.z = 0;
+                    position.x = newPosition.x;
+                }
+                const testZ = new THREE.Vector3(oldPosition.x, newPosition.y, newPosition.z);
+                if (!checkCollision(testZ)) {
+                    velocity.z = newVelocity.z;
+                    velocity.x = 0;
+                    position.z = newPosition.z;
+                }
+                if (checkCollision(position)) {
+                    velocity.set(0, 0, 0);
+                }
+            }
 
             const currentSpeed = velocity.length();
             const maxSpeed = isTank ? TANK_MAX_SPEED : MAX_SPEED;
@@ -1403,14 +1405,10 @@
             }
 
             velocity.multiplyScalar(FRICTION);
-
             if (velocity.length() < 0.001) {
                 velocity.set(0, 0, 0);
             }
 
-            position.add(velocity);
-
-            // Границы поля
             if (Math.abs(position.x) > BOUNDARY) {
                 position.x = Math.sign(position.x) * BOUNDARY;
                 velocity.x = 0;
@@ -1441,7 +1439,7 @@
                 `📍 ${position.x.toFixed(2)} · ${position.y.toFixed(2)} · ${position.z.toFixed(2)}`;
         }
 
-        // --- Камера ---
+        // --- Камера (ракурс сохранён) ---
         const CAMERA_DISTANCE_MIN = 4.5;
         const CAMERA_DISTANCE_MAX = 6.5;
         const CAMERA_HEIGHT = 3.2;
@@ -1492,9 +1490,20 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
 
-        console.log('🚗 Симулятор с городом запущен!');
+        // --- Анимационный цикл ---
+        function animate() {
+            requestAnimationFrame(animate);
+            updateCar();
+            updateCamera();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        console.log('🚗 Симулятор с увеличенными машинами запущен!');
         console.log('🏙️ Город "Tiny City" (https://skfb.ly/6xOOr) by Matheus Dalla (CC BY)');
-        console.log('📍 Поле 720×720, спавн в центре (0, 0, 0)');
+        console.log('🚗 Все машины увеличены в 3 раза!');
+        console.log(`📍 Размер города: ${GROUND_SIZE}×${GROUND_SIZE}, спавн в центре (0, 0, 0)`);
+        console.log(`🚧 Коллизий создано: ${collisionMeshes.length}`);
         console.log('🔑 Промокоды: "танк" — TTTank, "мила" — Tiramisu SRM');
         console.log('🔧 Нажмите кнопку 🔧 для открытия гаража');
         console.log('📖 Управление: W/↑ — назад, S/↓ — вперёд, A/←, D/→ — руль, Пробел — ручник');

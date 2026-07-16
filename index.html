@@ -1287,7 +1287,7 @@
         }
 
         // --------------------------------------------------------------
-        // 10. ЗАГРУЗКА МОДЕЛЕЙ
+        // 10. ЗАГРУЗКА МОДЕЛЕЙ (С УМЕНЬШЕННЫМ МАСШТАБОМ)
         // --------------------------------------------------------------
         function loadModel(modelId, filePath) {
             return new Promise((resolve, reject) => {
@@ -1298,11 +1298,22 @@
                     const box = new THREE.Box3().setFromObject(model);
                     const size = box.getSize(new THREE.Vector3());
                     const maxDim = Math.max(size.x, size.y, size.z);
-                    let targetSize = modelInfo.isCybertruck ? 4.0 : 2.0;
+                    
+                    // === НОВЫЙ МАСШТАБ: все машины уменьшены ===
+                    // Tantoya Korova (mercedes) должна быть длиной с танк
+                    // Используем единый целевой размер для всех
+                    let targetSize = 1.5; // уменьшенный базовый размер
+                    
+                    // Для Cybertruck оставляем увеличенным
+                    if (modelInfo.isCybertruck) {
+                        targetSize = 2.5;
+                    }
+                    
                     if (maxDim > 0.01) {
                         const s = targetSize / maxDim;
                         model.scale.set(s, s, s);
                     }
+                    
                     const center = new THREE.Vector3();
                     box.getCenter(center);
                     model.position.sub(center);
@@ -1332,29 +1343,27 @@
             });
         }
 
-        // === СПИСОК МОДЕЛЕЙ (10 машин) ===
+        // === СПИСОК МОДЕЛЕЙ (9 машин, Fortruck удалён) ===
         const modelsList = [
             { id: 'bmw', name: 'BEEMWA 22', emoji: '🚗', file: 'bmw2002.glb', rotation: 0, isCybertruck: false,
-                locked: false, isFortruck: false, credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
+                locked: false, credit: '"1968 BMW 2002" (https://skfb.ly/pFqYn) by tonielpro520 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
             { id: 'bmw30', name: 'BEEMWA 30', emoji: '🚗', file: 'BEEMWAPP3.glb', rotation: Math.PI / 2, isCybertruck: false,
-                locked: false, isFortruck: false, credit: '"Low Poly Car - BMW E30 1985 White" (https://skfb.ly/o8EBR) by ROH3D is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
+                locked: false, credit: '"Low Poly Car - BMW E30 1985 White" (https://skfb.ly/o8EBR) by ROH3D is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
             { id: 'nissan', name: 'Neasun Loral 2rbo', emoji: '🚘', file: 'nissan_laurel.glb', rotation: Math.PI / 2,
-                isCybertruck: false, locked: false, isFortruck: false, credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
+                isCybertruck: false, locked: false, credit: '"Nissan Laurel C31 Turbo 85\'" (https://skfb.ly/6SoPW) by own.guest is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
             { id: 'mercedes', name: 'Tantoya Korova', emoji: '🚙', file: 'gelik.glb', rotation: 0, isCybertruck: false,
-                locked: false, isFortruck: false, credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
+                locked: false, credit: '"Toyota Corola" (https://skfb.ly/6RHQA) by danieljorge435 is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
             { id: 'toyota', name: 'Tantoya Parmezan', emoji: '🚗', file: 'toyota_tezzo.glb', rotation: -Math.PI / 2,
-                isCybertruck: false, locked: false, isFortruck: false, credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
+                isCybertruck: false, locked: false, credit: '"Tozzo \'98 - Low poly model" (https://skfb.ly/pB6Xs) by Daniel Zhabotinsky is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
             { id: 'pagani', name: 'Poganka Sport', emoji: '🏎️', file: 'pagani1.glb', rotation: 0, isCybertruck: false,
-                locked: false, isFortruck: false, credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
+                locked: false, isFast: true, credit: '"Pagani Zonda Cinque" (https://skfb.ly/oBt9O) by Ajay Gawde is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
             { id: 'tank', name: 'TTTank', emoji: '🎖️', file: 'low_poly_tank.glb', rotation: Math.PI / 2, isCybertruck: false,
-                locked: true, isFortruck: false, credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
+                locked: true, credit: '"Low Poly Tank" (https://skfb.ly/6YNSy) by Kolos Studios is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)',
                 isTank: true },
             { id: 'cybertruck', name: 'Teelsa Hypertrick', emoji: '🚛', file: 'low_poly_tesla_cybertruck.glb', rotation: 0,
-                isCybertruck: true, locked: false, isFortruck: false, scale: 2.0, credit: 'Free Standard' },
+                isCybertruck: true, locked: false, scale: 2.5, credit: 'Free Standard' },
             { id: 'tiramisu', name: 'Tiramisu SRM', emoji: '🍰', file: 'crumbelinas_tira-missile_early_look.glb',
-                rotation: 0, isCybertruck: false, locked: true, isFortruck: false, credit: '"Crumbelina\'s Tira-Missile (Early look)" (https://skfb.ly/pAR7K) by CrystalCandySTK is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' },
-            { id: 'fortruck', name: 'Fortruck', emoji: '🚛', file: 'fortnite_semi_truck1.glb', rotation: 0,
-                isCybertruck: false, locked: true, isFortruck: true, maxSpeedLimit: 0.37, credit: '"Fortnite Semi Truck" (https://skfb.ly/pLwI8) by Coolguywhodosevehicles/andskibidi is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' }
+                rotation: 0, isCybertruck: false, locked: true, credit: '"Crumbelina\'s Tira-Missile (Early look)" (https://skfb.ly/pAR7K) by CrystalCandySTK is licensed under Creative Commons Attribution (http://creativecommons.org/licenses/by/4.0/)' }
         ];
 
         const loadedModels = {};
@@ -1521,7 +1530,7 @@
         });
 
         // --------------------------------------------------------------
-        // 15. ПРОМОКОДЫ (добавлен "дальнобойщик")
+        // 15. ПРОМОКОДЫ (Fortruck удалён)
         // --------------------------------------------------------------
         const promoInput = document.getElementById('promoInput');
         const promoBtn = document.getElementById('promoBtn');
@@ -1557,18 +1566,6 @@
                     promoMessage.className = 'promo-message success';
                 } else {
                     promoMessage.textContent = '⚠️ Tiramisu SRM уже разблокирована';
-                    promoMessage.className = 'promo-message error';
-                }
-            } else if (code === 'дальнобойщик') {
-                const fortruck = modelsList.find(m => m.id === 'fortruck');
-                if (fortruck && fortruck.locked) {
-                    fortruck.locked = false;
-                    unlocked = true;
-                    renderCarList();
-                    promoMessage.textContent = '✅ Fortruck разблокирован!';
-                    promoMessage.className = 'promo-message success';
-                } else {
-                    promoMessage.textContent = '⚠️ Fortruck уже разблокирован';
                     promoMessage.className = 'promo-message error';
                 }
             } else {
@@ -1824,11 +1821,12 @@
         };
 
         // --------------------------------------------------------------
-        // 18. ОСНОВНОЙ ИГРОВОЙ ЦИКЛ (с ограничением для Fortruck)
+        // 18. ОСНОВНОЙ ИГРОВОЙ ЦИКЛ (с ограничением 55 км/ч для всех, кроме Poganka)
         // --------------------------------------------------------------
         const ENGINE_FORCE = 0.02;
         const REVERSE_FORCE = 0.01;
-        const MAX_SPEED = 0.5;
+        const MAX_SPEED = 0.5; // ~75 км/ч (стандарт)
+        const SLOW_MAX_SPEED = 0.37; // ~55 км/ч (для большинства машин)
         const TURN_SPEED = 0.03;
         const FRICTION = 0.99;
         const TANK_MAX_SPEED = 0.23;
@@ -1840,6 +1838,7 @@
             const { position, velocity, rotation } = carState;
             const modelInfo = modelsList.find(m => m.id === currentModelId);
             const isTank = modelInfo ? modelInfo.isTank : false;
+            const isFast = modelInfo ? modelInfo.isFast : false; // Poganka Sport
 
             let acceleration = 0;
             let turn = 0;
@@ -1855,9 +1854,9 @@
             const currentSpeed = velocity.length();
             let maxSpeed = isTank ? TANK_MAX_SPEED : MAX_SPEED;
 
-            // --- ОГРАНИЧЕНИЕ ДЛЯ FORTRUCK (55 км/ч) ---
-            if (modelInfo && modelInfo.isFortruck) {
-                maxSpeed = modelInfo.maxSpeedLimit || 0.37;
+            // === НОВОЕ ОГРАНИЧЕНИЕ: все машины (кроме Poganka) — 55 км/ч ===
+            if (!isFast && !isTank) {
+                maxSpeed = SLOW_MAX_SPEED; // 55 км/ч
             }
 
             if (currentSpeed > maxSpeed) {
@@ -2188,8 +2187,9 @@
         console.log(`📍 Размер поля: ${WORLD_SIZE}×${WORLD_SIZE}, центр (0, 0, 0)`);
         console.log(`🚗 Добавлено ${routes.length} маршрутов для NPC`);
         console.log(`🔄 Найдено ${intersections.length} перекрёстков для поворотов`);
-        console.log('🚛 Fortruck разблокируется по промокоду "дальнобойщик"');
-        console.log('🔑 Другие промокоды: "танк" — TTTank, "мила" — Tiramisu SRM');
+        console.log('🐢 Все машины (кроме Poganka) ограничены 55 км/ч');
+        console.log('🏎️ Poganka Sport — единственная машина без ограничения скорости!');
+        console.log('🔑 Промокоды: "танк" — TTTank, "мила" — Tiramisu SRM');
         console.log('📖 Управление: W/↑ — назад, S/↓ — вперёд, A/←, D/→ — руль, Пробел — ручник');
     </script>
 </body>
